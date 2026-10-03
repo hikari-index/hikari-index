@@ -1,0 +1,27 @@
+# The worker's Python packages, pinned to exactly what the image that
+# produced every v3 bundle carries (read from it with `pip freeze`,
+# 2026-10-02). Scene detection, the near-duplicate signatures and the AVIF
+# encoder all live in these, so a different version can change which frames
+# are published or the bytes of a web image. Installed with --no-deps: this
+# list is the whole set.
+#
+# opencv-python is installed after this file, in its own step (see the
+# Dockerfile): PySceneDetect depends on it, both OpenCV packages provide the
+# same cv2 module, and the one installed last is the one that runs.
+av==18.0.0
+click==8.4.2
+ImageHash==4.3.2
+numpy==2.5.1
+opencv-python-headless==5.0.0.93
+pillow==12.3.0
+platformdirs==4.11.0
+PyWavelets==1.9.0
+scenedetect==0.7.1
+scipy==1.18.0
+tqdm==4.70.0
+# The job table: pg8000 (BSD-3, pure Python) and everything it pulls in.
+pg8000==1.31.5
+scramp==1.4.17
+asn1crypto==1.5.1
+python-dateutil==2.9.0.post0
+six==1.17.0

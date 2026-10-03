@@ -1,0 +1,41 @@
+# The standby analyze worker, for an always-on machine with no NVIDIA GPU
+# (containers/cpu-worker). It takes an analyze stage only while no regular
+# analyze worker (a GPU machine) has checked in for 10 minutes, so it
+# covers the hours that machine is off and stays out of its way
+# otherwise. Same job-table access as the GPU worker: the gallery's worker
+# API with the token; the share read-only; nothing written there.
+#
+# Settings in a git-ignored .env.cpu-worker beside this file (see
+# .env.cpu-worker.example). The share is a Docker CIFS volume made once on
+# the machine (it holds the share credential), named by HIKARI_SHARE_VOLUME.
+#
+#   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml up -d
+#   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml logs -f
+services:
+  analyze-worker:
+    image: ${HIKARI_IMAGE_REPOSITORY:?set HIKARI_IMAGE_REPOSITORY in .env.cpu-worker, e.g. ghcr.io/<owner>/hikari-index}:${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.cpu-worker}
+    env_file: .env.cpu-worker
+    environment:
+      HIKARI_SHARE: /share
+      HIKARI_DEVICE: cpu
+      HIKARI_WORKER_STANDBY: "1"
+    volumes:
+      - type: volume
+        source: share
+        target: /share
+        read_only: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=4g,mode=1777
+      - /home/hikari:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 60s
+    restart: unless-stopped
+
+volumes:
+  share:
+    external: true
+    name: ${HIKARI_SHARE_VOLUME:-hikari-index-share}

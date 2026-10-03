@@ -1,0 +1,26 @@
+{
+	"name": "hikari-gallery",
+	"private": true,
+	"license": "AGPL-3.0-or-later",
+	"version": "0.0.1",
+	"type": "module",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build",
+		"preview": "vite preview",
+		"prepare": "svelte-kit sync || echo ''"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-node": "^5.5.0",
+		"@sveltejs/kit": "^2.63.0",
+		"@sveltejs/vite-plugin-svelte": "^7.1.2",
+		"drizzle-kit": "^0.31.11",
+		"svelte": "^5.56.1",
+		"vite": "^8.0.16"
+	},
+	"dependencies": {
+		"drizzle-orm": "^0.45.3",
+		"pg": "^8.23.0",
+		"sharp": "^0.34.5"
+	}
+}

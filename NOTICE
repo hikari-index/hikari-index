@@ -1,0 +1,31 @@
+Hikari Index
+Copyright (C) 2026 the Hikari Index authors
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. See LICENSE.
+
+Third-party work the built images contain or download
+-----------------------------------------------------
+
+jellyfin-ffmpeg 8.1.3-1 (the worker image). GNU General Public License,
+version 3 or later. Installed from the package the Jellyfin project
+publishes; its copyright file is in the image at
+/usr/share/doc/jellyfin-ffmpeg8/copyright. Source:
+https://github.com/jellyfin/jellyfin-ffmpeg at tag v8.1.3-1. Hikari Index
+runs ffmpeg and ffprobe as separate programs and does not modify them.
+
+IBM Plex Sans and IBM Plex Mono (the gallery). SIL Open Font License 1.1;
+see gallery/static/fonts/LICENSE-IBM-Plex.txt.
+
+Model weights (the inference base and the analyze workers download these
+at build time from Hugging Face, at pinned revisions): SigLIP 2
+(google/siglip2-base-patch16-224), the WD SwinV2 tagger v3
+(SmilingWolf/wd-swinv2-tagger-v3) and the anime face detector models
+(hysts/anime-face-detector-faster-rcnn and -hrnetv2). Each has its own
+licence on its model page. Read them before you redistribute an image
+that contains them.
+
+Everything else the images install comes from PyPI, npm, crates.io and
+Debian under its own licence, recorded in each package's metadata.

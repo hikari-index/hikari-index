@@ -1,0 +1,609 @@
+{
+  "allowlist_version": "wd-swinv2-v3-allowlist-2",
+  "taxonomy_version": "visual-taxonomy-v3",
+  "source_vocabulary": {
+    "checkpoint": "SmilingWolf/wd-swinv2-tagger-v3",
+    "tags_total": 10861,
+    "general": 8106,
+    "character": 2751,
+    "rating": 4,
+    "copyright_or_series": 0
+  },
+  "policy": {
+    "matching": "exact tag name only, never substring or pattern",
+    "matching_reason": "Substring matching on this vocabulary is actively dangerous. A search for 'bloom' returns 'bloomers' (clothing), 'shadow' returns 'eyeshadow' (cosmetics), and 'dark' returns 'dark_skin' and 'dark-skinned_female' -- demographic descriptors that must never reach a record.",
+    "default": "discard",
+    "default_reason": "A tag earns a place only by naming a taxonomy value it can land on. Everything else is discarded, including tags that look useful but have no target."
+  },
+  "discarded_categories": [
+    {
+      "category": "character",
+      "count": 2751,
+      "reason": "Named character identity. Excluded by the protocol and never inferred."
+    },
+    {
+      "category": "demographic-and-identity",
+      "examples": [
+        "dark_skin",
+        "dark-skinned_female",
+        "dark-skinned_male"
+      ],
+      "reason": "Demographic and identity inference is excluded by the protocol and by research/02. People labels are counts only."
+    },
+    {
+      "category": "body-and-sexualised-descriptors",
+      "examples": [
+        "breasts",
+        "large_breasts"
+      ],
+      "reason": "Not cinematography, and excluded vocabulary. The rating output is the separate sensitive-content lane."
+    },
+    {
+      "category": "character-appearance",
+      "examples": [
+        "long_hair",
+        "blue_eyes",
+        "blonde_hair",
+        "school_uniform",
+        "blush",
+        "smile"
+      ],
+      "reason": "Describes who is in frame rather than how it is shot. The bulk of the general vocabulary by tag count."
+    },
+    {
+      "category": "series-and-copyright",
+      "count": 0,
+      "reason": "This checkpoint predicts no copyright or series tags at all, so Shoko remains the sole source of series metadata by construction rather than by policy. Recorded here so a later checkpoint that does emit them is culled without re-deriving the rule."
+    },
+    {
+      "category": "illustration-artifacts",
+      "examples": [
+        "watermark",
+        "signature",
+        "logo",
+        "copyright_name"
+      ],
+      "reason": "Artifacts of the illustrations WD was trained on. Rare in broadcast frames and never a product facet."
+    }
+  ],
+  "gender_handling": {
+    "rule": "Count tags are read for arity only; the gender assertion is dropped at this boundary and never reaches a record.",
+    "detail": "The most frequent count vocabulary is inherently gendered (1girl, 1boy, 2girls). Both 1girl and 1boy map to the people value 'one'. No gender value exists anywhere in visual-taxonomy-v2, so there is nowhere for such a label to go even if it were wanted."
+  },
+  "deferred": [
+    {
+      "tags": [
+        "letterboxed"
+      ],
+      "reason": "Real signal with no taxonomy target. Aspect is a source-stream property, and letterboxing alone does not distinguish deliberate matting from a frame caught mid-transition between mattes."
+    },
+    {
+      "tags": [
+        "classroom",
+        "forest",
+        "beach",
+        "city",
+        "mountain",
+        "rooftop"
+      ],
+      "reason": "The research location hierarchy did not enter visual-taxonomy-v2, which carries only interior/exterior/mixed/abstract. These are allowlisted below as corroborating evidence for that axis, not as labels in their own right."
+    },
+    {
+      "tags": [
+        "pov",
+        "fisheye",
+        "perspective",
+        "from_side",
+        "from_behind"
+      ],
+      "reason": "from_side and from_behind describe subject-relative direction, not camera height or tilt, so they do not belong to the angle family. The others have no taxonomy value."
+    }
+  ],
+  "content_facets": {
+    "policy": "Multi-value open-vocabulary facets carried verbatim into records. A tag enters a facet list under the same rules as a mapping: exact name, verified to fire on real reviewed frames (all listed tags fired at >= 0.05 on the 1,800 reviewed frames, 2026-07-26), and never an age, demographic, identity, sexualised, or franchise-specific term. Expression vocabulary (smile, blush) stays deliberately excluded: a cinematography library wants what is in frame and what is happening, not what face is being made.",
+    "things": [
+      "aircraft", "armor", "backpack", "bag", "ball", "basketball", "beach",
+      "bed", "bicycle", "blue_sky", "boat", "book", "bookshelf", "bottle",
+      "bridge", "building", "bush", "candle", "car", "cellphone",
+      "cherry_blossoms", "chair", "city", "cityscape", "clock", "cloud",
+      "cloudy_sky", "computer", "cup", "curtains", "desk", "door", "fence",
+      "flag", "flower", "food", "forest", "grass", "guitar", "gun", "house",
+      "instrument", "knife", "lamp", "mecha", "mirror", "moon",
+      "motor_vehicle", "mountain", "mug", "ocean", "petals", "phone", "piano",
+      "picture_frame", "plant", "poster_(object)", "power_lines", "rain",
+      "river", "road", "robot", "ruins", "shelf", "shield", "sign",
+      "sky", "smartphone", "snow", "stairs", "star_(sky)", "street", "sun",
+      "sword",
+      "table", "television", "tower", "train", "tree", "umbrella",
+      "utility_pole", "water", "weapon", "window"
+    ],
+    "actions": [
+      "arms_up", "crying", "drinking", "eating", "fighting", "flying",
+      "hands_in_pockets", "holding", "jumping", "kneeling",
+      "leaning_forward", "looking_at_another", "looking_at_viewer",
+      "looking_back", "lying", "outstretched_arm", "pointing", "reaching",
+      "reading", "running", "singing", "sitting", "sleeping", "standing",
+      "talking", "walking", "waving", "writing"
+    ]
+  },
+  "mappings": [
+    {
+      "tag": "dutch_angle",
+      "family": "angle_composition",
+      "field": "angle",
+      "value": "dutch",
+      "role": "primary"
+    },
+    {
+      "tag": "straight-on",
+      "family": "angle_composition",
+      "field": "angle",
+      "value": "eye-level",
+      "role": "primary"
+    },
+    {
+      "tag": "from_above",
+      "family": "angle_composition",
+      "field": "angle",
+      "value": "high",
+      "role": "primary"
+    },
+    {
+      "tag": "from_below",
+      "family": "angle_composition",
+      "field": "angle",
+      "value": "low",
+      "role": "primary"
+    },
+    {
+      "tag": "greyscale",
+      "family": "lighting_color_character",
+      "field": "color_bias",
+      "value": "monochrome",
+      "role": "primary"
+    },
+    {
+      "tag": "monochrome",
+      "family": "lighting_color_character",
+      "field": "color_bias",
+      "value": "monochrome",
+      "role": "primary"
+    },
+    {
+      "tag": "backlighting",
+      "family": "lighting_color_character",
+      "field": "lighting",
+      "value": "backlit",
+      "role": "primary"
+    },
+    {
+      "tag": "silhouette",
+      "family": "lighting_color_character",
+      "field": "lighting",
+      "value": "silhouette",
+      "role": "primary"
+    },
+    {
+      "tag": "6+boys",
+      "family": "people",
+      "field": "people",
+      "value": "crowd",
+      "role": "primary"
+    },
+    {
+      "tag": "6+girls",
+      "family": "people",
+      "field": "people",
+      "value": "crowd",
+      "role": "primary"
+    },
+    {
+      "tag": "crowd",
+      "family": "people",
+      "field": "people",
+      "value": "crowd",
+      "role": "primary"
+    },
+    {
+      "tag": "1boy",
+      "family": "people",
+      "field": "people",
+      "value": "one",
+      "role": "primary"
+    },
+    {
+      "tag": "1girl",
+      "family": "people",
+      "field": "people",
+      "value": "one",
+      "role": "primary"
+    },
+    {
+      "tag": "solo",
+      "family": "people",
+      "field": "people",
+      "value": "one",
+      "role": "primary"
+    },
+    {
+      "tag": "3boys",
+      "family": "people",
+      "field": "people",
+      "value": "small-group",
+      "role": "primary"
+    },
+    {
+      "tag": "3girls",
+      "family": "people",
+      "field": "people",
+      "value": "small-group",
+      "role": "primary"
+    },
+    {
+      "tag": "4girls",
+      "family": "people",
+      "field": "people",
+      "value": "small-group",
+      "role": "primary"
+    },
+    {
+      "tag": "5girls",
+      "family": "people",
+      "field": "people",
+      "value": "small-group",
+      "role": "primary"
+    },
+    {
+      "tag": "2boys",
+      "family": "people",
+      "field": "people",
+      "value": "two",
+      "role": "primary"
+    },
+    {
+      "tag": "2girls",
+      "family": "people",
+      "field": "people",
+      "value": "two",
+      "role": "primary"
+    },
+    {
+      "tag": "couple",
+      "family": "people",
+      "field": "people",
+      "value": "two",
+      "role": "corroborating"
+    },
+    {
+      "tag": "no_humans",
+      "family": "people",
+      "field": "people",
+      "value": "zero",
+      "role": "primary"
+    },
+    {
+      "tag": "beach",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "city",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "forest",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "mountain",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "ocean",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "outdoors",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "primary"
+    },
+    {
+      "tag": "park",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "road",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "rooftop",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "street",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "exterior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "bathroom",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "bedroom",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "car_interior",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "classroom",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "hallway",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "indoors",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "primary"
+    },
+    {
+      "tag": "kitchen",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "library",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "office",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "restaurant",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "train_interior",
+      "family": "setting_time_weather",
+      "field": "setting",
+      "value": "interior",
+      "role": "corroborating"
+    },
+    {
+      "tag": "day",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "day",
+      "role": "primary"
+    },
+    {
+      "tag": "night",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "night",
+      "role": "primary"
+    },
+    {
+      "tag": "dawn",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "twilight",
+      "role": "corroborating"
+    },
+    {
+      "tag": "dusk",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "twilight",
+      "role": "corroborating"
+    },
+    {
+      "tag": "sunrise",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "twilight",
+      "role": "primary"
+    },
+    {
+      "tag": "sunset",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "twilight",
+      "role": "primary"
+    },
+    {
+      "tag": "twilight",
+      "family": "setting_time_weather",
+      "field": "time",
+      "value": "twilight",
+      "role": "primary"
+    },
+    {
+      "tag": "blue_sky",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "clear",
+      "role": "corroborating"
+    },
+    {
+      "tag": "clear_sky",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "clear",
+      "role": "primary"
+    },
+    {
+      "tag": "fog",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "fog",
+      "role": "primary"
+    },
+    {
+      "tag": "overcast",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "other",
+      "role": "primary"
+    },
+    {
+      "tag": "rain",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "rain",
+      "role": "primary"
+    },
+    {
+      "tag": "snow",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "snow",
+      "role": "corroborating"
+    },
+    {
+      "tag": "snowing",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "snow",
+      "role": "primary"
+    },
+    {
+      "tag": "lightning",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "storm",
+      "role": "corroborating"
+    },
+    {
+      "tag": "storm",
+      "family": "setting_time_weather",
+      "field": "weather",
+      "value": "storm",
+      "role": "primary"
+    },
+    {
+      "tag": "close-up",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "close-up",
+      "role": "primary"
+    },
+    {
+      "tag": "portrait",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "close-up",
+      "role": "corroborating"
+    },
+    {
+      "tag": "scenery",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "extreme-wide",
+      "role": "corroborating"
+    },
+    {
+      "tag": "cowboy_shot",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "medium",
+      "role": "corroborating"
+    },
+    {
+      "tag": "upper_body",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "medium",
+      "role": "primary"
+    },
+    {
+      "tag": "full_body",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "wide",
+      "role": "primary"
+    },
+    {
+      "tag": "wide_shot",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "wide",
+      "role": "primary"
+    }
+  ],
+  "text_evidence": {
+    "tags": [
+      "subtitled",
+      "credits",
+      "english_text",
+      "japanese_text",
+      "text",
+      "text_focus",
+      "copyright_name",
+      "character_name",
+      "artist_name",
+      "logo"
+    ],
+    "role": "review-trigger",
+    "reason": "Establishes that text is present. Combined with a low frame entropy it also backs text-only-card: a card is type on a flat field and an overlay has content underneath. Above that entropy nothing separates a card from diegetic text, which research/01 forbids removing, so only the low side is acted on. Measured over 3,190 real frames, this list had been written against Danbooru vocabulary rather than what the model emits -- `text` and `japanese_text` fire on ZERO frames while `text_focus` fires on 73, the largest text signal present, and was absent. Added with copyright_name, character_name, artist_name and logo, which carry the name and title cards. watermark and signature stay out as ambiguous on screencaps."
+  }
+}

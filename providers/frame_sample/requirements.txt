@@ -1,0 +1,11 @@
+scenedetect>=0.7
+opencv-python-headless>=4.8
+# Fallback video reader for scene detection. OpenCV cannot decode AV1
+# here -- its bundled FFmpeg selects the hardware-only native decoder and
+# reads zero frames without raising. PyAV (BSD-3) carries a software AV1
+# decoder and is a backend PySceneDetect supports directly. Scoring only;
+# published pixels still come from the ffmpeg CLI.
+av>=13
+imagehash>=4.3
+Pillow>=10.0
+numpy>=1.24

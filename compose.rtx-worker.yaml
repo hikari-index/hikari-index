@@ -1,0 +1,54 @@
+# A GPU analyze worker on a second machine: runs the analyze stage
+# whenever this machine and Docker are up, and waits quietly when there is
+# nothing to do. It reaches the job table only through the gallery's
+# worker API; the bundle is read-only over a network share of the data
+# folder. Settings in a git-ignored
+# .env.rtx-worker beside this file (see .env.rtx-worker.example).
+#
+# Always pass --env-file: compose would otherwise read .env, which is the
+# single-machine install's file.
+#
+#   docker compose --env-file .env.rtx-worker -f compose.rtx-worker.yaml build
+#   docker compose --env-file .env.rtx-worker -f compose.rtx-worker.yaml up -d
+#   docker compose --env-file .env.rtx-worker -f compose.rtx-worker.yaml logs -f
+services:
+  rtx-worker:
+    build:
+      context: .
+      dockerfile: containers/rtx-worker/Dockerfile
+      args:
+        HIKARI_WORKER_VERSION: "${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.rtx-worker}"
+    image: hikari-index/rtx-worker:${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.rtx-worker}
+    env_file: .env.rtx-worker
+    environment:
+      HIKARI_SHARE: /share
+      HIKARI_DEVICE: cuda
+    volumes:
+      # A Docker-managed CIFS volume onto the shared data folder (it holds
+      # its own credential). Read-only: the worker never writes the share.
+      - type: volume
+        source: share
+        target: /share
+        read_only: true
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    read_only: true
+    tmpfs:
+      - /tmp:size=4g,mode=1777
+      - /home/hikari:size=256m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    stop_grace_period: 60s
+    restart: unless-stopped
+
+volumes:
+  share:
+    external: true
+    name: ${HIKARI_SHARE_VOLUME:-hikari-index-share}

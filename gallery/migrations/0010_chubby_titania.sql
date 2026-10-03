@@ -1,0 +1,1 @@
+ALTER TABLE "stills" ADD COLUMN "review_reasons" jsonb DEFAULT '[]'::jsonb NOT NULL;

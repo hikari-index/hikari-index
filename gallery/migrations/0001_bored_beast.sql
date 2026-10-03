@@ -1,0 +1,1 @@
+ALTER TABLE "stills" ADD COLUMN "palette" jsonb;

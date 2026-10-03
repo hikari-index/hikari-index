@@ -1,0 +1,116 @@
+{
+  "prompt_set_version": "controlled-zeroshot-1",
+  "taxonomy_version": "visual-taxonomy-v2",
+  "notes": [
+    "Controlled zero-shot: the label set is fixed to taxonomy values and never free-form. research/02 assigns SigLIP 'controlled zero-shot ranking', not captioning.",
+    "SigLIP scores each image/text pair with a sigmoid rather than a softmax over the set, so labels do not compete for a fixed probability mass. That matters for animation, where a layout can be simultaneously overhead and eye-level; a softmax would manufacture a winner where the frame genuinely supports two readings.",
+    "Several prompts per label, averaged. One phrasing is a coin flip on wording; an average over paraphrases is what the ranking should rest on.",
+    "Prompts describe how the frame is SHOT, never what is in it. A prompt mentioning a character or a setting would rank on subject match and silently answer a different question."
+  ],
+  "families": {
+    "shot_scale": {
+      "field": "shot_scale",
+      "labels": {
+        "extreme-close-up": [
+          "an extreme close-up filling the frame with a single small detail",
+          "a macro shot of an eye or a hand filling the whole frame"
+        ],
+        "close-up": [
+          "a close-up shot of a face filling most of the frame",
+          "a tight head-and-shoulders shot"
+        ],
+        "medium": [
+          "a medium shot framing a figure from the waist up",
+          "a mid shot showing a figure from the chest upward"
+        ],
+        "wide": [
+          "a wide shot showing a full figure and the space around it",
+          "a full-body shot with visible surroundings"
+        ],
+        "extreme-wide": [
+          "an extreme wide establishing shot of a landscape",
+          "a distant vista where any figures are tiny in the frame"
+        ]
+      }
+    },
+    "angle": {
+      "field": "angle",
+      "labels": {
+        "eye-level": [
+          "a shot taken at eye level, straight on",
+          "a neutral straight-on view level with the subject"
+        ],
+        "high": [
+          "a high angle shot looking down at the subject",
+          "a downward-tilted view from above the subject"
+        ],
+        "low": [
+          "a low angle shot looking up at the subject",
+          "an upward-tilted view from below the subject"
+        ],
+        "overhead": [
+          "a top-down overhead view looking straight down",
+          "a bird's eye view directly above the scene"
+        ],
+        "dutch": [
+          "a dutch angle shot with the horizon tilted",
+          "a canted frame where the whole image is rotated"
+        ]
+      }
+    },
+    "composition": {
+      "field": "composition",
+      "labels": {
+        "centered": [
+          "a centered composition with the subject in the middle of the frame",
+          "a symmetrically centred subject"
+        ],
+        "rule-of-thirds": [
+          "a composition placing the subject on a rule-of-thirds line",
+          "an off-centre composition with the subject a third of the way across"
+        ],
+        "symmetrical": [
+          "a symmetrical composition, the left half mirroring the right",
+          "a formally balanced mirrored composition"
+        ],
+        "asymmetrical": [
+          "an asymmetrical composition weighted to one side",
+          "an unbalanced composition with the subject far off-centre"
+        ],
+        "layered": [
+          "a layered composition with distinct foreground, middle and background",
+          "a deep composition with several planes of depth"
+        ]
+      }
+    },
+    "lighting": {
+      "field": "lighting",
+      "labels": {
+        "flat": [
+          "flat even lighting with no strong shadows",
+          "uniformly lit with very low contrast"
+        ],
+        "mixed": [
+          "a scene lit by several different light sources",
+          "mixed lighting with both warm and cool sources"
+        ],
+        "backlit": [
+          "a backlit subject with light coming from behind",
+          "strong rim light outlining the subject from behind"
+        ],
+        "silhouette": [
+          "a dark silhouette against a bright background",
+          "a subject rendered as a black shape against light"
+        ],
+        "high-key": [
+          "a bright high-key image with lifted shadows",
+          "an overall pale, brightly lit frame"
+        ],
+        "low-key": [
+          "a dark low-key image dominated by shadow",
+          "a mostly dark frame with small pools of light"
+        ]
+      }
+    }
+  }
+}

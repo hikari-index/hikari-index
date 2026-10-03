@@ -1,0 +1,473 @@
+/* Hikari Index gallery: design tokens and base styles.
+   Direction: "quiet archive" (research 2026-09-27): the still is the only lit
+   thing on a matte near-black page; every word around it is small and exact.
+   One warm accent, used for state only (focus, active chip, current section),
+   never as the link color. Five type sizes. No corner radius on any image. */
+
+/* Self-hosted IBM Plex (SIL Open Font License 1.1; licence in static/fonts/),
+   so the look does not depend on the viewer's OS. Latin-1 and Latin-2 subsets
+   only: they cover romanized titles with macrons; anything else (arrows,
+   kana) falls back to the system stack. font-display: optional means a slow
+   first paint keeps the fallback rather than reflowing captions mid-read;
+   on the LAN the files arrive well inside the block period. research/03
+   forbids third-party font requests, not files shipped with the site. */
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url("/fonts/IBMPlexSans-Regular-Latin1.woff2") format("woff2");
+  unicode-range: U+0000, U+000D, U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+FB01-FB02;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url("/fonts/IBMPlexSans-Regular-Latin2.woff2") format("woff2");
+  unicode-range: U+0100-0101, U+0104-0130, U+0132-0151, U+0154-017F, U+018F, U+0192, U+01A0-01A1, U+01AF-01B0, U+01FA-01FF, U+0218-021B, U+0237, U+0259, U+1E80-1E85, U+1E9E, U+20A1, U+20A4, U+20A6, U+20A8-20AA, U+20AD-20AE, U+20B1-20B2, U+20B4-20B5, U+20B8-20BA, U+20BD, U+20BF;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: optional;
+  src: url("/fonts/IBMPlexSans-Medium-Latin1.woff2") format("woff2");
+  unicode-range: U+0000, U+000D, U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+FB01-FB02;
+}
+@font-face {
+  font-family: "IBM Plex Sans";
+  font-style: normal;
+  font-weight: 500;
+  font-display: optional;
+  src: url("/fonts/IBMPlexSans-Medium-Latin2.woff2") format("woff2");
+  unicode-range: U+0100-0101, U+0104-0130, U+0132-0151, U+0154-017F, U+018F, U+0192, U+01A0-01A1, U+01AF-01B0, U+01FA-01FF, U+0218-021B, U+0237, U+0259, U+1E80-1E85, U+1E9E, U+20A1, U+20A4, U+20A6, U+20A8-20AA, U+20AD-20AE, U+20B1-20B2, U+20B4-20B5, U+20B8-20BA, U+20BD, U+20BF;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url("/fonts/IBMPlexMono-Regular-Latin1.woff2") format("woff2");
+  unicode-range: U+0000, U+000D, U+0020-007E, U+00A0-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2020-2022, U+2026, U+2030, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+FB01-FB02;
+}
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url("/fonts/IBMPlexMono-Regular-Latin2.woff2") format("woff2");
+  unicode-range: U+0100-0101, U+0104-0130, U+0132-0151, U+0154-017F, U+018F, U+0192, U+01A0-01A1, U+01AF-01B0, U+01FA-01FF, U+0218-021B, U+0237, U+0259, U+1E80-1E85, U+1E9E, U+20A1, U+20A4, U+20A6, U+20A8-20AA, U+20AD-20AE, U+20B1-20B2, U+20B4-20B5, U+20B8-20BA, U+20BD, U+20BF;
+}
+
+:root {
+  /* surfaces, darkest to lightest; neutral, not blue-black */
+  --bg-0: #0b0b0d; /* page */
+  --bg-1: #141416; /* inputs, tiles, admin panels */
+  --bg-2: #1c1c1f; /* hover of bg-1, popovers */
+  --img: #151517; /* behind every image while it loads / letterbox */
+  /* lines */
+  --line-1: #232326; /* hairline: header rule, hover outline */
+  --line-2: #39393e; /* chip borders, hover outline on cards */
+  --line-input: #6f6c66; /* form control borders: 3.8:1 on bg-0, meets non-text contrast */
+  /* text tiers (all AA on bg-0/bg-1; text-3 must not sit on bg-2 or darker text) */
+  --text-1: #ece9e2; /* 16.2:1 on bg-0 */
+  --text-2: #b3b0a8; /* 9.1:1 */
+  --text-3: #8a8780; /* 5.5:1 */
+  /* one accent, warm; state only */
+  --accent: #e0b95b;
+  --focus: #f2c964;
+  --link-rule: #6f6c66; /* underline color for links, which are text-colored */
+
+  --font-ui: "IBM Plex Sans", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace;
+
+  /* five sizes: label · meta · ui · body · title */
+  --t-label: 11px;
+  --t-meta: 12px;
+  --t-ui: 13px;
+  --t-body: 15px;
+  --t-title: 22px;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 24px;
+  --s-6: 32px;
+  --s-7: 48px;
+
+  --gutter: 24px;
+  --card-min: 200px; /* grid card minimum; the contact sheet sets 176px */
+  --frame-ratio: 16 / 9; /* card image slot; a sheet sets its work's own ratio */
+}
+
+html {
+  background: var(--bg-0);
+}
+body {
+  margin: 0;
+  font: var(--t-body) / 1.5 var(--font-ui);
+  background: var(--bg-0);
+  color: var(--text-1);
+  -webkit-text-size-adjust: 100%;
+}
+img {
+  background: var(--img);
+}
+
+/* links: text-colored with a quiet underline; the accent is never a link */
+a {
+  color: var(--text-1);
+  text-decoration: underline;
+  text-decoration-color: var(--link-rule);
+  text-underline-offset: 3px;
+}
+a:hover {
+  text-decoration-color: var(--text-1);
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 3px;
+}
+
+/* headings */
+h1 {
+  font-size: var(--t-title);
+  line-height: 1.25;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--text-1);
+  margin: var(--s-1) 0 var(--s-1);
+}
+h2,
+.label {
+  font: 500 var(--t-label) / 1.2 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: var(--s-6) 0 var(--s-3);
+}
+h2 {
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line-1);
+}
+.label {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+code,
+kbd,
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+kbd {
+  font-size: var(--t-label);
+  line-height: 1;
+  color: var(--text-2);
+  background: var(--bg-1);
+  border: 1px solid var(--line-2);
+  border-radius: 2px;
+  padding: 2px 4px;
+  margin: 0 2px;
+}
+
+/* recurring text roles */
+.meta {
+  font-size: var(--t-ui);
+  color: var(--text-3);
+  margin: var(--s-1) 0;
+}
+.meta a {
+  color: var(--text-2);
+}
+.lead {
+  font-size: 17px;
+  line-height: 1.5;
+  color: var(--text-2);
+  max-width: 640px;
+  margin: 0 0 var(--s-4);
+}
+.crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-5);
+  padding: var(--s-3) 0;
+  font-size: var(--t-meta);
+  color: var(--text-3);
+}
+.sr {
+  position: absolute;
+  left: -9999px;
+}
+
+/* controls: inputs, buttons, chips */
+input,
+button,
+select,
+textarea {
+  font: inherit;
+  color: var(--text-1);
+  background: var(--bg-1);
+  border: 1px solid var(--line-input);
+  border-radius: 0;
+  padding: 0 var(--s-3);
+  height: 40px;
+  box-sizing: border-box;
+}
+textarea {
+  height: auto;
+  padding: var(--s-2) var(--s-3);
+}
+button {
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 0 var(--s-4);
+}
+button:hover {
+  color: var(--text-1);
+  border-color: var(--text-3);
+}
+::placeholder {
+  color: var(--text-3);
+}
+.chip {
+  display: inline-block;
+  padding: 3px 8px;
+  border: 1px solid var(--line-2);
+  border-radius: 2px; /* the only radius on the site, so chips read as controls */
+  color: var(--text-2);
+  font-size: var(--t-meta);
+  line-height: 1.4;
+  text-decoration: none;
+  white-space: nowrap; /* lowercase on purpose: a wall of capitalized chips shouts */
+}
+.chip:hover {
+  border-color: var(--text-3);
+  color: var(--text-1);
+}
+.chip b {
+  font: 400 var(--t-label) / 1 var(--font-mono);
+  color: var(--text-3);
+  margin-left: 6px;
+}
+.chip.on {
+  border-color: var(--accent);
+  color: var(--text-1);
+}
+
+/* the card grid: image slot, palette strip, caption */
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-2);
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-min), 1fr));
+}
+.cards a {
+  display: block;
+  color: var(--text-3);
+  font-size: var(--t-meta);
+  line-height: 1.35;
+  text-decoration: none;
+}
+.frame {
+  display: block;
+  aspect-ratio: var(--frame-ratio);
+  background: var(--img);
+  outline: 1px solid transparent; /* bare until hover */
+  transition: outline-color 120ms;
+}
+.frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+.cards a:hover .frame {
+  outline-color: var(--line-2);
+}
+.cards a:hover .cap,
+.cards a:hover .time {
+  color: var(--text-1);
+}
+.cards .cap {
+  display: block;
+  margin-top: var(--s-2);
+  color: var(--text-2);
+}
+.cards .fig {
+  color: var(--text-3);
+  margin-right: 8px;
+}
+.cards .sub {
+  display: block;
+  margin-top: 1px;
+}
+.unlabeled {
+  font-style: italic;
+}
+
+/* cover tiles (palette grades, techniques, library): mosaics are covers, so they crop */
+.tiles {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s-3) var(--s-4);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.tiles a {
+  display: block;
+  text-decoration: none;
+  color: var(--text-1);
+}
+.tiles a:hover .mosaic,
+.tiles a:hover .cover {
+  outline-color: var(--line-2);
+}
+.mosaic,
+.cover {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 2px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  background: var(--img);
+  outline: 1px solid transparent;
+  transition: outline-color 120ms;
+}
+.cover {
+  display: block;
+}
+.mosaic img,
+.cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.mosaic img:first-child {
+  grid-row: 1 / 3;
+}
+.mosaic.one {
+  grid-template-columns: 1fr;
+}
+.tiles strong {
+  display: block;
+  margin-top: var(--s-2);
+  font-size: var(--t-ui);
+  font-weight: 500;
+}
+.tiles .count {
+  font: 400 var(--t-meta) / 1.4 var(--font-mono);
+  color: var(--text-3);
+}
+
+/* pagination and inline filter rows */
+.pages,
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-4);
+  padding: var(--s-3) 0;
+  font-size: var(--t-ui);
+  color: var(--text-3);
+}
+.filters a {
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.filters a.on {
+  color: var(--text-1);
+  text-decoration: none;
+  border-bottom: 2px solid var(--accent);
+}
+
+/* phones: works, not designed for (decision 2026-09-27) */
+@media (max-width: 600px) {
+  :root {
+    --gutter: 16px;
+    --card-min: 140px;
+  }
+  .lead {
+    font-size: var(--t-body);
+  }
+  .cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr)); /* two across on a phone whatever the page's card size */
+  }
+  .tiles {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  }
+}
+@media (hover: none) {
+  .frame {
+    outline-color: var(--line-1); /* no hover to reveal it, so keep the hairline */
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+}
+
+/* admin tables and notices (onboard, jobs) */
+table.data {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--t-ui);
+  margin-bottom: var(--s-4);
+}
+table.data th,
+table.data td {
+  text-align: left;
+  vertical-align: top;
+  padding: 6px var(--s-3) 6px 0;
+  border-bottom: 1px solid var(--line-1);
+}
+table.data thead th {
+  font: 500 var(--t-label) / 1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+table.data tbody th {
+  font-weight: 400;
+}
+table.data td {
+  color: var(--text-2);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  width: 7rem;
+}
+table.data td.text,
+table.data th.text {
+  font-family: var(--font-ui);
+  text-align: left;
+  width: auto;
+}
+.note {
+  max-width: 640px;
+  padding: var(--s-2) var(--s-3);
+  border-left: 2px solid var(--accent);
+  background: var(--bg-1);
+  color: var(--text-2);
+}
+
+/* A link back to a sheet lands on the card you came from (#<candidate>),
+   with room above it rather than flush under the header. */
+.cards > li[id] {
+  scroll-margin-top: 30vh;
+}
+
+/* An image box shows the still's own color (placeholder()) until the image
+   arrives; the alt text stays for screen readers but is not painted. */
+img {
+  color: transparent;
+}

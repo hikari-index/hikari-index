@@ -1,0 +1,195 @@
+# Hikari Index on one machine: the gallery, its database, the worker that
+# reads your video, an analyze worker and the text encoder for mood search.
+# Every image is built from this repository. Settings come from `.env`
+# beside this file (copy `.env.example`; the README walks through it).
+#
+#   docker compose build inference-base     # once; large (the models)
+#   docker compose build
+#   docker compose run --rm --no-deps gallery node scripts/first-run.js
+#   docker compose up -d
+#
+# The analyze worker comes in two kinds, chosen by COMPOSE_PROFILES in
+# `.env`: `cpu` (works anywhere, slow) or `gpu` (an NVIDIA card).
+#
+# Backups, recovery and updating: docs/SETUP.md. Shoko: docs/SHOKO.md.
+
+x-hardening: &hardening
+  read_only: true
+  cap_drop:
+    - ALL
+  security_opt:
+    - no-new-privileges:true
+  restart: unless-stopped
+
+x-analyze: &analyze
+  <<: *hardening
+  depends_on:
+    gallery:
+      condition: service_healthy
+  volumes:
+    # The run records and frames, read-only: results go back through the
+    # gallery, never by writing here.
+    - ${HIKARI_DATA:-hikari-data}:/share:ro
+  tmpfs:
+    - /tmp:size=4g,mode=1777
+    - /home/hikari:size=256m,mode=1777
+  stop_grace_period: 60s
+
+x-analyze-environment: &analyze-environment
+  HIKARI_GALLERY_URL: http://gallery:3000
+  HIKARI_WORKER_ID: analyze
+  HIKARI_WORKER_TOKEN: ${HIKARI_ANALYZE_TOKEN:-}
+  HIKARI_SHARE: /share
+  HIKARI_POLL_SECONDS: ${HIKARI_POLL_SECONDS:-30}
+
+services:
+  db:
+    # PostgreSQL 18 with pgvector. 18 keeps its data under
+    # /var/lib/postgresql/18/docker, so the mount goes at /var/lib/postgresql.
+    image: pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: hikari
+      POSTGRES_USER: hikari
+      # Empty until the first-run step's lines are in .env; the database
+      # refuses to start without one.
+      POSTGRES_PASSWORD: ${HIKARI_DB_PASSWORD:-}
+    volumes:
+      - ${HIKARI_DB_DATA:-hikari-db}:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hikari -d hikari"]
+      interval: 10s
+      timeout: 3s
+      retries: 20
+
+  gallery:
+    <<: *hardening
+    build:
+      context: gallery
+      args:
+        HIKARI_GALLERY_VERSION: gallery-${HIKARI_VERSION:-local}
+    image: hikari-index/gallery:${HIKARI_VERSION:-local}
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://hikari:${HIKARI_DB_PASSWORD:-}@db:5432/hikari
+      # The address you open the gallery at; the sign-in form needs it.
+      ORIGIN: ${HIKARI_ORIGIN:-http://localhost:5183}
+      HIKARI_ADMIN_USER: ${HIKARI_ADMIN_USER:-}
+      HIKARI_ADMIN_PASSWORD_HASH: ${HIKARI_ADMIN_PASSWORD_HASH:-}
+      HIKARI_SESSION_SECRET: ${HIKARI_SESSION_SECRET:-}
+      HIKARI_WORKER_TOKENS: ${HIKARI_WORKER_TOKENS:-}
+      HIKARI_ADMIN_LINK: ${HIKARI_ADMIN_LINK:-1}
+      HIKARI_IMAGES: /images
+      HIKARI_RUNS: /share/runs
+      ENCODER_URL: http://text-encoder:5187
+      # Shoko, optional: without a base URL the Onboard page offers files
+      # and folders by path only.
+      HIKARI_SHOKO_BASE_URL: ${HIKARI_SHOKO_BASE_URL:-}
+      HIKARI_SHOKO_API_KEY_FILE: /run/secrets/shoko-api-key
+    volumes:
+      - ${HIKARI_IMAGES:-hikari-images}:/images:ro
+      # Written by the gallery: it stores what the analyze worker sends
+      # back, and deletes a work's files when you remove it.
+      - ${HIKARI_DATA:-hikari-data}:/share
+      # A folder holding the file `shoko-api-key`, if you use Shoko.
+      - ${HIKARI_SECRETS:-./secrets}:/run/secrets:ro
+    ports:
+      - "${HIKARI_GALLERY_BIND:-0.0.0.0}:${HIKARI_GALLERY_PORT:-5183}:3000"
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    pids_limit: 256
+
+  worker:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: containers/worker/Dockerfile
+      args:
+        HIKARI_WORKER_VERSION: worker-${HIKARI_VERSION:-local}
+    image: hikari-index/worker:${HIKARI_VERSION:-local}
+    depends_on:
+      # The gallery applies the database migrations and is the first to
+      # mount the data volume.
+      gallery:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://hikari:${HIKARI_DB_PASSWORD:-}@db:5432/hikari
+      # Source folder name = where it is mounted here. With Shoko the name
+      # is Shoko's managed folder id (a number); without it, any name.
+      HIKARI_SOURCE_ROOTS: ${HIKARI_SOURCE_ROOTS:-library=/source}
+      HIKARI_POLL_SECONDS: ${HIKARI_POLL_SECONDS:-30}
+      HIKARI_WORKER_HOURS: ${HIKARI_WORKER_HOURS:-}
+    volumes:
+      # Your video, read-only. The only service that sees it.
+      - ${HIKARI_VIDEO:?set HIKARI_VIDEO in .env to the folder your video is in}:/source:ro
+      - ${HIKARI_DATA:-hikari-data}:/output
+      - ${HIKARI_IMAGES:-hikari-images}:/images
+    tmpfs:
+      - /tmp:size=1g,mode=1777
+    stop_grace_period: 60s
+
+  # Build-only: the models every analyze worker image copies from. Never
+  # started by `up`; build it once with `docker compose build inference-base`.
+  inference-base:
+    profiles: ["build"]
+    build:
+      context: .
+      dockerfile: containers/inference/Dockerfile
+    image: hikari-index/inference:inference-d1f2552-20261002.1
+
+  analyze-cpu:
+    <<: *analyze
+    profiles: ["cpu"]
+    build:
+      context: .
+      dockerfile: containers/cpu-worker/Dockerfile
+      args:
+        HIKARI_WORKER_VERSION: cpu-worker-${HIKARI_VERSION:-local}
+    image: hikari-index/cpu-worker:${HIKARI_VERSION:-local}
+    environment:
+      <<: *analyze-environment
+      HIKARI_DEVICE: cpu
+
+  analyze-gpu:
+    <<: *analyze
+    profiles: ["gpu"]
+    build:
+      context: .
+      dockerfile: containers/rtx-worker/Dockerfile
+      args:
+        HIKARI_WORKER_VERSION: rtx-worker-${HIKARI_VERSION:-local}
+    image: hikari-index/rtx-worker:${HIKARI_VERSION:-local}
+    environment:
+      <<: *analyze-environment
+      HIKARI_DEVICE: cuda
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  text-encoder:
+    <<: *hardening
+    build:
+      context: .
+      dockerfile: containers/text-encoder/Dockerfile
+    image: hikari-index/text-encoder:${HIKARI_VERSION:-local}
+    environment:
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+      OMP_NUM_THREADS: "4"
+    tmpfs:
+      - /tmp:size=256m,mode=1777
+    pids_limit: 256
+
+volumes:
+  hikari-db:
+  # Run records, the original frames (masters) and the frames the picker
+  # did not take. The largest of the three.
+  hikari-data:
+  # The web images the gallery serves.
+  hikari-images:

@@ -1,0 +1,18 @@
+# OpenSSL setup for the source hash check only (hashfile.py): the default
+# algorithms plus the legacy module, which holds MD4 (ED2K is MD4-based).
+# Set through OPENSSL_CONF for that one child process; nothing else in the
+# worker reads this file.
+openssl_conf = openssl_init
+
+[openssl_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+legacy = legacy_sect
+
+[default_sect]
+activate = 1
+
+[legacy_sect]
+activate = 1

@@ -1,0 +1,5 @@
+# Everything here is copied into Linux images or read by tools that hash
+# file bytes: text is LF in the working tree on every platform. CRLF breaks
+# shell scripts outright, and it changed the pipeline's recorded digest
+# (the sha256 of pipeline_cli.py as built) with no change to the code.
+* text=auto eol=lf

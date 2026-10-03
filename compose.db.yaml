@@ -1,0 +1,31 @@
+# A database for gallery development only (`npm run dev` on the same
+# machine): PostgreSQL with pgvector on a loopback port, data in a named
+# Docker volume. An install uses compose.yaml instead. Credentials come
+# from a git-ignored .env.db beside this file (see .env.db.example).
+#
+#   docker compose --env-file .env.db -f compose.db.yaml up -d
+#   docker compose --env-file .env.db -f compose.db.yaml down        # keeps the volume
+#   docker compose --env-file .env.db -f compose.db.yaml down -v     # deletes the data
+services:
+  db:
+    # A development database. A data volume starts only on the major
+    # version that wrote it: pick 17 or 18 once (compose.yaml uses
+    # 18) and keep it; moving between them is a dump and restore.
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${HIKARI_DB_NAME:?set in .env.db}
+      POSTGRES_USER: ${HIKARI_DB_USER:?set in .env.db}
+      POSTGRES_PASSWORD: ${HIKARI_DB_PASSWORD:?set in .env.db}
+    ports:
+      - "${HIKARI_DB_BIND:-127.0.0.1}:${HIKARI_DB_PORT:-5432}:5432"
+    volumes:
+      - hikari-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  hikari-db:

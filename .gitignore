@@ -1,0 +1,133 @@
+# Operating-system and editor files
+.DS_Store
+Thumbs.db
+Desktop.ini
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Secrets and installation-local configuration
+.env
+# Plain-text admin passwords from gallery/scripts/admin-password.js, wherever
+# a run left one.
+admin-password.txt
+.env.*
+!.env.example
+!.env.*.example
+*.private.json
+*.private.toml
+*.private.yaml
+*.private.yml
+*.pem
+*.key
+*.p12
+*.pfx
+*.token
+*.secret
+secrets/
+credentials/
+private/
+*-private/
+docker-compose.override.yml
+docker-compose.override.yaml
+compose.override.yml
+compose.override.yaml
+*.local.json
+*.local.toml
+*.local.yaml
+*.local.yml
+
+# Logs, temporary files, and tool caches
+*.log
+logs/
+tmp/
+temp/
+.tmp/
+.cache/
+coverage/
+htmlcov/
+
+# JavaScript / TypeScript
+node_modules/
+.pnpm-store/
+.yarn/
+.npm/
+dist/
+build/
+.svelte-kit/
+.next/
+.nuxt/
+.output/
+.vite/
+.turbo/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyd
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+
+# Rust and .NET build output
+target/
+bin/
+obj/
+
+# Local runtime state and databases
+appdata/
+runtime/
+var/
+pgdata/
+postgres-data/
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+*.dump
+*.bak
+
+# Private media and generated image artifacts
+source-media/
+private-media/
+media-private/
+stills/
+!gallery/src/routes/admin/stills/
+frames/
+candidates/
+derivatives/
+generated-stills/
+exports/
+*.mkv
+*.m2ts
+*.mts
+*.avi
+*.wmv
+*.mp4
+*.mov
+*.webm
+
+# Downloaded models and inference caches
+model-cache/
+models/downloaded/
+weights/
+checkpoints/
+.huggingface/
+*.safetensors
+*.ckpt
+*.pth
+*.pt
+*.onnx
+
+# Local/private deployment overlays and backups
+deployment/private/
+deploy/local/
+backups/
+restore-tests/
