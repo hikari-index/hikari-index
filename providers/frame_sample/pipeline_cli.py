@@ -399,15 +399,19 @@ def _probe_stream(video_path: str, ffprobe_path: str) -> tuple[int, str]:
     return int(streams[0]["index"]), streams[0]["time_base"]
 
 
-#: How far before the container's stated length the picture may end in an
-#: ordinary file. The container's duration is its longest stream's, and audio
-#: or subtitles commonly run a second or two past the last video frame; the
-#: sampler plans the last shot to the container's end, so a sample can land
-#: in that gap with no frame at or after it (seen: 1.3 s). A picture that
-#: ends further back than this stopped early -- the demuxer lost the stream
-#: at damaged or missing bytes (seen: unreadable for the last 37% of an
-#: episode) -- and scene detection does not notice, because it reads up to
-#: the same point and still finds plenty of cuts.
+#: How far before its stated length the picture may end in an ordinary file.
+#: The sampler plans the last shot to the container's duration, which is
+#: not the video's: audio or subtitles commonly run a second or two past the
+#: last frame, and a Matroska segment can declare the end of its last chapter
+#: (seen: 9.7 s past every track). So a sample can land after the last frame
+#: (seen: 1.3 s). The stated length measured against is the video track's own
+#: where the file gives one (`_video_stated_seconds`), so neither of those
+#: counts against the picture; only a file that does not say falls back to
+#: the container's duration. A picture that ends further back than this
+#: stopped early -- the demuxer lost the stream at damaged or missing bytes
+#: (seen: unreadable for the last 37% of an episode) -- and scene detection
+#: does not notice, because it reads up to the same point and still finds
+#: plenty of cuts.
 PICTURE_END_TOLERANCE_SECONDS = 5.0
 
 
@@ -439,22 +443,68 @@ def _last_frame_seconds(video_path: str, time_base: str, ffprobe_path: str) -> f
     return float(max(pts_values) * Fraction(time_base))
 
 
+def _video_stated_seconds(video_path: str, ffprobe_path: str) -> Optional[float]:
+    """How long the video track says it runs, or None if it does not say.
+
+    The picture-end check measures against this rather than the container's
+    duration. A Matroska segment's duration is whatever the muxer wrote, and
+    releases write the end of their last chapter there (seen: 9.7 s past
+    every track, so a whole episode was refused). The video track's own
+    length is what a picture that stops early falls short of: a file that
+    loses its picture at damaged bytes still declares the full track.
+    """
+    result = _run(
+        [
+            ffprobe_path,
+            "-v", "error",
+            "-select_streams", "v:0",
+            "-show_entries", "stream=duration:stream_tags=DURATION",
+            "-of", "json",
+            "--", video_path,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    streams = json.loads(result.stdout).get("streams", [])
+    if not streams:
+        return None
+    stream = streams[0]
+    try:
+        seconds = float(stream["duration"])
+        if seconds > 0:
+            return seconds
+    except (KeyError, TypeError, ValueError):
+        pass
+    # Matroska keeps a track's length only as a tag, e.g. 00:23:40.002000000.
+    tag = (stream.get("tags") or {}).get("DURATION", "")
+    match = re.fullmatch(r"(\d+):(\d{2}):(\d{2}(?:\.\d+)?)", tag.strip())
+    if not match:
+        return None
+    hours, minutes, secs = match.groups()
+    seconds = int(hours) * 3600 + int(minutes) * 60 + float(secs)
+    return seconds if seconds > 0 else None
+
+
 def _clock(seconds: float) -> str:
     whole = int(seconds)
     return f"{whole // 60}:{whole % 60:02d}"
 
 
-def _refuse_if_picture_stops_early(picture_end: float, source_duration: float) -> None:
+def _refuse_if_picture_stops_early(picture_end: float, stated_end: float,
+                                   stated_by: str = "the file") -> None:
     """Refuse a file whose picture ends well before its stated length.
 
-    Worded as a refusal so the worker ends the stage as ineligible on the
-    first attempt: the same bytes fail the same way every time.
+    `stated_end` is the video track's own length where the file gives one
+    (`_video_stated_seconds`), else the container's; `stated_by` names which,
+    for the message. Worded as a refusal so the worker ends the stage as
+    ineligible on the first attempt: the same bytes fail the same way every
+    time.
     """
-    if source_duration <= 0 or source_duration - picture_end > PICTURE_END_TOLERANCE_SECONDS:
+    if stated_end <= 0 or stated_end - picture_end > PICTURE_END_TOLERANCE_SECONDS:
         raise RuntimeError(
             f"refused: the picture stops at {_clock(picture_end)} "
-            f"({picture_end:.3f}s) but the file says it runs "
-            f"{_clock(source_duration)} ({source_duration:.3f}s); the file "
+            f"({picture_end:.3f}s) but {stated_by} says it runs "
+            f"{_clock(stated_end)} ({stated_end:.3f}s); the file "
             f"looks damaged or cut short. Replace it, then onboard it again."
         )
 
@@ -1044,7 +1094,11 @@ def _publish_best_in_shot(
         nonlocal picture_end
         if picture_end is None:
             picture_end = _last_frame_seconds(input_path, time_base, ffprobe_path)
-            _refuse_if_picture_stops_early(picture_end, source_duration)
+            track_end = _video_stated_seconds(input_path, ffprobe_path)
+            if track_end is None:
+                _refuse_if_picture_stops_early(picture_end, source_duration)
+            else:
+                _refuse_if_picture_stops_early(picture_end, track_end, "its video track")
             print(f"[extract] the picture ends at {picture_end:.3f}s, "
                   f"{source_duration - picture_end:.3f}s before the file's "
                   f"stated end; samples after it are dropped", flush=True)

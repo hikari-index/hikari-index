@@ -136,11 +136,13 @@ def _silhouette(field: int, subject: int, size: int = 14):
     )
 
 
-def _run_publish(candidates, frames, last_frame=None, **overrides):
+def _run_publish(candidates, frames, last_frame=None, track_end=None, **overrides):
     """Drive _publish_best_in_shot with frames keyed by candidate_id.
 
     `last_frame` (seconds) ends the picture there: timestamps after it have no
     frame, as when a file's audio outlasts its video or its bytes are damaged.
+    `track_end` is the length the video track states; None is a file that
+    states none, measured against `source_duration` instead.
     """
     color_filter = build_color_filter(SourceColorInfo(None, None, None, None, 720))
     ends = (lambda t: False) if last_frame is None else (lambda t: t > last_frame)
@@ -191,6 +193,7 @@ def _run_publish(candidates, frames, last_frame=None, **overrides):
          patch("frame_sample.pipeline_cli._container_start_time", return_value=0.0), \
          patch("frame_sample.pipeline_cli._image_dimensions", return_value=(64, 64)), \
          patch("frame_sample.pipeline_cli._last_frame_seconds", return_value=last_frame), \
+         patch("frame_sample.pipeline_cli._video_stated_seconds", return_value=track_end), \
          patch("frame_sample.pipeline_cli._sha256", return_value="a" * 64):
         with tempfile.TemporaryDirectory() as tmp:
             stage = Path(tmp)
@@ -259,6 +262,31 @@ class TestPictureEnd:
         with pytest.raises(RuntimeError, match=r"^refused: the picture stops at "):
             _run_publish(candidates, frames, last_frame=last,
                          source_duration=duration)
+
+    @pytest.mark.parametrize("duration", PATHS)
+    def test_a_long_last_chapter_is_not_a_short_picture(self, duration):
+        """A Matroska segment that declares its last chapter's end, 9.66 s
+        past every track (a real release). The video track states its own
+        length and the picture reaches it: the late sample is dropped, the
+        file is not refused."""
+        candidates, frames = self._tail_shot(duration)
+        last = duration - 9.66
+        result = _run_publish(candidates, frames, last_frame=last,
+                              track_end=last + 0.042, source_duration=duration)
+
+        past = [o["candidate"]["candidate_id"] for o in result["redundant_omissions"]
+                if o["reason"] == "past_the_last_frame"]
+        assert "cand-0003" in past
+        assert "cand-0001" in {c.candidate_id for c in result["published"]}
+
+    @pytest.mark.parametrize("duration", PATHS)
+    def test_a_track_that_stops_early_is_refused_by_its_own_length(self, duration):
+        """Damaged bytes cut the picture short of what its track declares."""
+        candidates, frames = self._tail_shot(duration)
+        with pytest.raises(RuntimeError, match=r"^refused: the picture stops at .* "
+                                               r"but its video track says it runs"):
+            _run_publish(candidates, frames, last_frame=duration - 9.0,
+                         track_end=duration, source_duration=duration)
 
     def test_nothing_changes_when_every_sample_has_a_frame(self):
         candidates, frames = self._tail_shot()
