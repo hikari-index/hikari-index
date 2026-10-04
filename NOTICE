@@ -32,11 +32,25 @@ each model page at the pinned revision, checked 2026-10-03:
 The anime-face-detector Python package is MIT as well. A model page can
 change; read it again before you redistribute an image.
 
-NVIDIA CUDA and cuDNN libraries (the GPU analyze image only, through the
-PyTorch base image and its nvidia-* packages). Proprietary, under
-NVIDIA's own licence terms, which set conditions on redistribution. Read
-them before you publish a GPU image. The CPU analyze image and the text
-encoder contain none of them.
+NVIDIA CUDA and cuDNN runtime libraries (the GPU analyze image only; the
+CPU analyze image and the text encoder contain none). They arrive as the
+nvidia-* packages PyTorch depends on and are not modified. They are
+proprietary: the CUDA libraries under NVIDIA's End User License
+Agreement and cuDNN under NVIDIA's licence agreement for software
+development kits. Both allow the runtime libraries to be distributed as
+part of an application that does more than they do, unmodified, for use
+on systems with NVIDIA GPUs, under terms consistent with NVIDIA's, and
+both say the libraries must not be made subject to an open source
+licence. Hikari Index's licence covers Hikari Index's own code; it does
+not extend to these libraries, which stay under NVIDIA's terms. NCCL is
+BSD-licensed. The full texts are in the image, in each package's
+License.txt under
+/opt/conda/lib/python3.11/site-packages/nvidia_*.dist-info/. No NVIDIA
+driver library is in the image; those come from the host.
+
+PyTorch (BSD-3-Clause) and the third-party code it bundles: its LICENSE
+and NOTICE are in the image under
+/opt/conda/lib/python3.11/site-packages/torch-*.dist-info/.
 
 Everything else the images install comes from PyPI, npm, crates.io and
 Debian under its own licence, recorded in each package's metadata.
