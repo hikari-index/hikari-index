@@ -1,4 +1,4 @@
-// The run records (the run folders, mounted at /runs):
+// The run records (the run folders under HIKARI_RUNS):
 // where the Windows worker's analyze results are stored, and what the
 // import stage reads to put a work into the gallery.
 //

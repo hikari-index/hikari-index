@@ -13,15 +13,16 @@ Settings (environment):
                           "films=/source/films" (any name, for files added
                           without Shoko; the gallery offers the names)
     HIKARI_WORKER_ID      default "source"
-    HIKARI_WORKER_HOURS   optional local-time window to START stages in,
-                          e.g. "01-07"; a stage already running finishes
+    HIKARI_WORKER_HOURS   optional window to START stages in, e.g. "01-07",
+                          on the container's clock (UTC unless TZ is set);
+                          a stage already running finishes
     HIKARI_POLL_SECONDS   default 60
     HIKARI_LIST_POLL_SECONDS
                           how often the listing thread looks for a folder
                           to list, default 5
 
-One stage at a time, on purpose: extraction saturates the CPU, and
-Jellyfin shares the box. The one exception is a folder listing for the
+One stage at a time, on purpose: extraction saturates the CPU, and the
+machine that holds the video usually runs other services too. The one exception is a folder listing for the
 gallery's "add a folder" page: one directory read, run by its own thread
 so the operator is not kept waiting behind an extraction.
 """

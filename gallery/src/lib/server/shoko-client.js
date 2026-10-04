@@ -4,7 +4,7 @@
 // Shoko is the metadata authority and this project never changes it. So:
 // GET only, and the method is fixed here rather than a parameter (Shoko's
 // DELETE /File/{id} defaults to removing the file from disk); only the
-// paths below can be reached, the same slice tools/shoko_lookup.py uses;
+// paths below can be reached;
 // the key goes in the `apikey` header and nowhere else, never logged, never
 // returned to a page. The key must belong to a non-admin user.
 import { readFileSync } from "node:fs";
