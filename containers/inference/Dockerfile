@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.19@sha256:b6afd42430b15f2d2a4c5a02b919e98a525b785b1aaff16747d2f623364e39b6
 
-# The analyze workers' base: CUDA torch, transformers, timm and
+# The GPU analyze worker's base: CUDA torch, transformers, timm and
 # the anime face detector, with every model the analyze stage runs pinned by
-# commit and checked by sha256, offline. Nothing else: the analyze workers
-# (containers/rtx-worker builds FROM it; containers/cpu-worker copies its
-# models) add the code they run.
-# About 18 GB. The analyze Dockerfiles name it by the tag in their
-# BASE_IMAGE / MODELS_IMAGE argument.
+# commit and checked by sha256, offline. Nothing else: containers/rtx-worker
+# builds FROM it and adds the code it runs. containers/cpu-worker fetches the
+# same pins itself and does not use this image.
+# About 18 GB. The GPU worker Dockerfile names it by the tag in its
+# BASE_IMAGE argument.
 
 ARG PYTORCH_IMAGE="pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime@sha256:77f17f843507062875ce8be2a6f76aa6aa3df7f9ef1e31d9d7432f4b0f563dee"
 
