@@ -1,0 +1,9 @@
+# Sections of the generated release notes (docs/RELEASING.md).
+changelog:
+  categories:
+    - title: Action needed
+      labels:
+        - action-needed
+    - title: Changes
+      labels:
+        - "*"

@@ -1,0 +1,117 @@
+name: Images
+
+# Builds the published images (docs/RELEASING.md).
+#   pull request   build only, nothing pushed: proves the images still build
+#   merge to main  push `dev` and `sha-<short commit>`
+#   tag vX.Y.Z     push `X.Y.Z` and `latest`, then open a draft release
+# The GPU analyze worker is not built here: its CUDA base (about 18 GB)
+# does not fit on a standard runner.
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: images-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - image: gallery
+            context: gallery
+            dockerfile: gallery/Dockerfile
+            version_arg: HIKARI_GALLERY_VERSION
+          - image: worker
+            context: .
+            dockerfile: containers/worker/Dockerfile
+            version_arg: HIKARI_WORKER_VERSION
+          - image: cpu-worker
+            context: .
+            dockerfile: containers/cpu-worker/Dockerfile
+            version_arg: HIKARI_WORKER_VERSION
+          - image: text-encoder
+            context: .
+            dockerfile: containers/text-encoder/Dockerfile
+            version_arg: ""
+    steps:
+      # The CPU worker (torch, models) needs more room than a runner has
+      # free by default; the preinstalled SDKs it removes are unused here.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h /
+
+      - uses: actions/checkout@v5
+
+      # What the image reports as its version: the release number on a tag,
+      # dev-<short commit> otherwise.
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/hikari-index/${{ matrix.image }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=hikari-index ${{ matrix.image }}
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            ${{ matrix.version_arg && format('{0}={1}-{2}', matrix.version_arg, matrix.image, steps.version.outputs.value) || '' }}
+          cache-from: type=gha,scope=${{ matrix.image }}
+          cache-to: type=gha,scope=${{ matrix.image }},mode=min
+
+  release:
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # A draft: the maintainer writes the "Action needed" line on top of
+      # the generated list, then publishes (docs/RELEASING.md).
+      - run: |
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --draft --verify-tag             --title "$GITHUB_REF_NAME" --generate-notes             --notes "**Action needed:** _write what to do, or None_"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

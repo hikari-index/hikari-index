@@ -14,7 +14,7 @@ worker and gallery builds refuse to run without one).
 | inference base | `containers/inference/Dockerfile` | `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime` | 18 GB |
 | analyze worker, NVIDIA GPU | `containers/rtx-worker/Dockerfile` | the inference base | 18 GB |
 | analyze worker, CPU | `containers/cpu-worker/Dockerfile` | `python:3.11-slim-bookworm`, weights fetched at the inference base's pins | 6 GB |
-| text encoder (mood search) | `containers/text-encoder/Dockerfile` | `python:3.11-slim-bookworm` | 1.3 GB |
+| text encoder (mood search) | `containers/text-encoder/Dockerfile` | `python:3.11-slim-bookworm` | 3.9 GB |
 
 ```bash
 docker build --build-arg HIKARI_GALLERY_VERSION=<tag> -t hikari-index/gallery:<tag> gallery
