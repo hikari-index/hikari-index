@@ -1,24 +1,31 @@
-# The standby analyze worker, for an always-on machine with no NVIDIA GPU
-# (containers/cpu-worker). It takes an analyze stage only while no regular
-# analyze worker (a GPU machine) has checked in for 10 minutes, so it
-# covers the hours that machine is off and stays out of its way
-# otherwise. Same job-table access as the GPU worker: the gallery's worker
-# API with the token; the share read-only; nothing written there.
+# A CPU analyze worker on a second machine (docs/SECOND_MACHINE.md). With
+# HIKARI_WORKER_STANDBY=1 in its settings it takes an analyze stage only
+# while no regular analyze worker has checked in for 10 minutes, so it
+# covers the hours a GPU machine is off and stays out of its way
+# otherwise. It reaches the job table only through the gallery's worker
+# API; the data is read-only over a network share.
 #
 # Settings in a git-ignored .env.cpu-worker beside this file (see
-# .env.cpu-worker.example). The share is a Docker CIFS volume made once on
-# the machine (it holds the share credential), named by HIKARI_SHARE_VOLUME.
+# .env.cpu-worker.example). The share is a Docker volume made once on the
+# machine (it holds the share credential), named by HIKARI_SHARE_VOLUME.
 #
+#   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml build
 #   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml up -d
 #   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml logs -f
 services:
   analyze-worker:
-    image: ${HIKARI_IMAGE_REPOSITORY:?set HIKARI_IMAGE_REPOSITORY in .env.cpu-worker, e.g. ghcr.io/<owner>/hikari-index}:${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.cpu-worker}
+    build:
+      context: .
+      dockerfile: containers/cpu-worker/Dockerfile
+      args:
+        HIKARI_WORKER_VERSION: "${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.cpu-worker}"
+    # Built here by default. Set HIKARI_IMAGE_REPOSITORY to pull the tag
+    # from a registry of yours instead of building.
+    image: ${HIKARI_IMAGE_REPOSITORY:-hikari-index/cpu-worker}:${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.cpu-worker}
     env_file: .env.cpu-worker
     environment:
       HIKARI_SHARE: /share
       HIKARI_DEVICE: cpu
-      HIKARI_WORKER_STANDBY: "1"
     volumes:
       - type: volume
         source: share

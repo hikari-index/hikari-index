@@ -63,12 +63,9 @@ is in.
 
 Connecting Shoko: [docs/SHOKO.md](docs/SHOKO.md).
 
-Advanced, and not yet written up as steps: an analyze worker on a second
-machine (a GPU elsewhere on your network). `compose.rtx-worker.yaml` and
-`compose.cpu-worker.yaml` are how the maintainer runs it; they expect
-the data folder shared over the network as a Docker volume on that
-machine, the image built there, and a token of its own added to
-`HIKARI_WORKER_TOKENS`. Start with everything on one machine.
+An analyze worker on a second machine (a GPU elsewhere on your
+network): [docs/SECOND_MACHINE.md](docs/SECOND_MACHINE.md). Start with
+everything on one machine.
 
 This is the maintainer's own working install, being prepared for others.
 Images are not yet published to a registry, which is why you build them.
