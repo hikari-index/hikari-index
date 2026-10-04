@@ -19,13 +19,24 @@ runs ffmpeg and ffprobe as separate programs and does not modify them.
 IBM Plex Sans and IBM Plex Mono (the gallery). SIL Open Font License 1.1;
 see gallery/static/fonts/LICENSE-IBM-Plex.txt.
 
-Model weights (the inference base and the analyze workers download these
-at build time from Hugging Face, at pinned revisions): SigLIP 2
-(google/siglip2-base-patch16-224), the WD SwinV2 tagger v3
-(SmilingWolf/wd-swinv2-tagger-v3) and the anime face detector models
-(hysts/anime-face-detector-faster-rcnn and -hrnetv2). Each has its own
-licence on its model page. Read them before you redistribute an image
-that contains them.
+Model weights (the inference base, the analyze workers and the text
+encoder download these at build time from Hugging Face, at pinned
+revisions, and the built images contain them). Licences as stated on
+each model page at the pinned revision, checked 2026-10-03:
+
+  SigLIP 2, google/siglip2-base-patch16-224            Apache License 2.0
+  WD SwinV2 tagger v3, SmilingWolf/wd-swinv2-tagger-v3 Apache License 2.0
+  hysts/anime-face-detector-faster-rcnn                MIT License
+  hysts/anime-face-detector-hrnetv2                    MIT License
+
+The anime-face-detector Python package is MIT as well. A model page can
+change; read it again before you redistribute an image.
+
+NVIDIA CUDA and cuDNN libraries (the GPU analyze image only, through the
+PyTorch base image and its nvidia-* packages). Proprietary, under
+NVIDIA's own licence terms, which set conditions on redistribution. Read
+them before you publish a GPU image. The CPU analyze image and the text
+encoder contain none of them.
 
 Everything else the images install comes from PyPI, npm, crates.io and
 Debian under its own licence, recorded in each package's metadata.
