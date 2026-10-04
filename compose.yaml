@@ -11,8 +11,8 @@
 # The analyze worker comes in two kinds, chosen by COMPOSE_PROFILES in
 # `.env`: `cpu` (works anywhere, slow) or `gpu` (an NVIDIA card).
 #
-# Backups, recovery and updating: docs/SETUP.md. Shoko: docs/SHOKO.md.
-# An analyze worker on another machine: docs/SECOND_MACHINE.md.
+# Setup, Shoko, backups, recovery, updating and an analyze worker on
+# another machine are in the docs: https://docs.hikari-index.moe/
 
 x-hardening: &hardening
   read_only: true
@@ -43,7 +43,7 @@ x-analyze-environment: &analyze-environment
   HIKARI_SHARE: /share
   HIKARI_POLL_SECONDS: ${HIKARI_POLL_SECONDS:-30}
   # "1" makes this worker a fallback for one on another machine
-  # (docs/SECOND_MACHINE.md).
+  # (https://docs.hikari-index.moe/install/second-machine/).
   HIKARI_WORKER_STANDBY: ${HIKARI_ANALYZE_STANDBY:-}
 
 services:

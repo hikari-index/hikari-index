@@ -1,4 +1,4 @@
-# A CPU analyze worker on a second machine (docs/SECOND_MACHINE.md). With
+# A CPU analyze worker on a second machine (https://docs.hikari-index.moe/install/second-machine/). With
 # HIKARI_WORKER_STANDBY=1 in its settings it takes an analyze stage only
 # while no regular analyze worker has checked in for 10 minutes, so it
 # covers the hours a GPU machine is off and stays out of its way
