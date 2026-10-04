@@ -9,7 +9,9 @@ whole, or sent anywhere.
 
 Read [how it works](docs/HOW_IT_WORKS.md) first. [Setting up](docs/SETUP.md)
 covers what you need, a first run that proves the install works, what to
-do when something stops, backups and updating. [Building](docs/BUILDING.md)
+do when something stops, backups and updating. [Using the
+gallery](docs/USING.md) covers searching and reviewing.
+[Building](docs/BUILDING.md)
 makes the images by hand; [AGENTS.md](AGENTS.md) is for
 anyone changing the code.
 
@@ -60,6 +62,7 @@ is in.
    choose **Admin**, sign in, and go to **Onboard**. Without Shoko, add a
    file by its path inside your video folder. Jobs shows the four stages
    as they run; when the last one finishes the stills are in Library.
+   What to do next: [docs/USING.md](docs/USING.md).
 
 Connecting Shoko: [docs/SHOKO.md](docs/SHOKO.md).
 

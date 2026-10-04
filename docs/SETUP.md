@@ -2,8 +2,8 @@
 
 The README has the five install steps. This page is what sits around
 them: what you need before you start, how to tell the install works, and
-what to do when something stops. It does not cover using the gallery
-(reviewing, searching); that is not written yet.
+what to do when something stops. Using the gallery (searching,
+reviewing) is [USING.md](USING.md).
 
 ## What you need
 

@@ -55,6 +55,7 @@ written to.
    correct a label, pin a frame from the pool the picker did not take, or
    hide a still from the public pages. Openings and endings that repeat
    across a season are marked for you so one action culls them.
+   [USING.md](USING.md) walks through it.
 
 Everything keeps its provenance: which build made it, with which model
 versions and settings. A re-run reuses the extraction and makes a new

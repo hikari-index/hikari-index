@@ -5,7 +5,8 @@ of representative stills with palette, composition, tag and similarity
 data, and serves them from a gallery on your own network. This file is
 for anyone (person or coding agent) changing the code. `README.md` says
 what the tool is and how to run it; `docs/HOW_IT_WORKS.md` explains the
-pipeline and the rules it keeps; `docs/SETUP.md` is requirements, recovery and backups; `docs/SHOKO.md`
+pipeline and the rules it keeps; `docs/SETUP.md` is requirements, recovery and backups;
+`docs/USING.md` is searching and reviewing in the gallery; `docs/SHOKO.md`
 connects Shoko; `docs/SECOND_MACHINE.md` puts an analyze worker on another
 machine;
 `docs/BUILDING.md` builds the images.
