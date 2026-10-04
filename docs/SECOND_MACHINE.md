@@ -65,11 +65,14 @@ docker compose up -d
 **5. Get the same code and build the worker.** The two machines must run
 the same version, so clone the same commit.
 
+First the model base, which both kinds of worker are built from (large,
+once):
+
 ```bash
-docker compose build inference-base
+docker build -f containers/inference/Dockerfile -t hikari-index/inference:inference-d1f2552-20261002.1 .
 ```
 
-For a GPU:
+Then the worker (after step 6, which names it). For a GPU:
 
 ```bash
 docker compose --env-file .env.rtx-worker -f compose.rtx-worker.yaml build
