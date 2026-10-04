@@ -7,19 +7,40 @@
 # CUDA stack (about 4 GB of it) to make the image small enough for a
 # small always-on machine.
 #
-# The model files are copied out of the local inference image rather than
-# downloaded again, so they are the bytes every stored vector and label came
-# from; each weight file is checked by sha256 below (SigLIP 2 at commit
-# 75de2d55..., the text encoder's pin). Package versions match that image.
+# The models are downloaded here at the same pinned commits as
+# containers/inference, and each weight file is checked by sha256 against
+# the bytes every stored vector and label came from (SigLIP 2 at commit
+# 75de2d55..., the text encoder's pin). It no longer copies them out of the
+# 18 GB CUDA base, so a machine with no GPU never builds CUDA. Package
+# versions match that image.
 #
 # Reaches the job table only through the gallery's worker API, like the GPU
 # worker; reads the share read-only; writes nothing there.
 
 ARG PYTHON_IMAGE="python:3.11-slim-bookworm@sha256:a36c24f9cbdf4fd0f52d67f0823eeac19c2028c637cecc392d97f980d4fec56b"
-ARG MODELS_IMAGE="hikari-index/inference:inference-d1f2552-20261002.1"
 ARG RUST_IMAGE="rust:1.97-bookworm@sha256:77fac8b98f9f46062bb680b6d25d5bcaabfc400143952ebc572e924bcbedc3fa"
 
-FROM ${MODELS_IMAGE} AS models
+# The model files, fetched at pinned commits (the same pins, and the same
+# layout under /opt/hikari/models, as containers/inference).
+FROM ${PYTHON_IMAGE} AS models
+ARG SIGLIP_MODEL_ID="google/siglip2-base-patch16-224"
+ARG SIGLIP_REVISION="75de2d55ec2d0b4efc50b3e9ad70dba96a7b2fa2"
+ARG WD_MODEL_ID="SmilingWolf/wd-swinv2-tagger-v3"
+ARG WD_REVISION="627aef95638667ddcaa3ac8ae625e88ea5b02f51"
+ARG AFD_VERSION="0.1.0"
+ARG AFD_DETECTOR_REPO="hysts/anime-face-detector-faster-rcnn"
+ARG AFD_DETECTOR_REVISION="f64ed6a45f6e0da561ee4e4e69f25e1d9a01fe55"
+ARG AFD_LANDMARK_REPO="hysts/anime-face-detector-hrnetv2"
+ARG AFD_LANDMARK_REVISION="9b3435248b26aeb82e2a8578fe9d86d5d57158af"
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 HF_HOME=/opt/hikari/models/hf-cache
+RUN pip install "huggingface_hub==0.36.2" "hf-xet==1.5.2"
+RUN python -c "from huggingface_hub import snapshot_download; import json, os; p = snapshot_download(repo_id=os.environ['SIGLIP_MODEL_ID'], revision=os.environ['SIGLIP_REVISION'], local_dir='/opt/hikari/models/siglip2-base-patch16-224', allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*']); json.dump({'model_id': os.environ['SIGLIP_MODEL_ID'], 'revision': os.environ['SIGLIP_REVISION'], 'sha256': '612923381c76ec5a9bed335d1c48827e3f2e506ac31b044b63b2031fadee6a0b', 'local_dir': p}, open('/opt/hikari/models/siglip2-base-patch16-224/WEIGHTS_PIN.json','w'), indent=2)"
+RUN python -c "from huggingface_hub import snapshot_download; import json, os; p = snapshot_download(repo_id=os.environ['WD_MODEL_ID'], revision=os.environ['WD_REVISION'], local_dir='/opt/hikari/models/wd-swinv2-tagger-v3', allow_patterns=['*.json','*.safetensors','*.csv']); json.dump({'model_id': os.environ['WD_MODEL_ID'], 'revision': os.environ['WD_REVISION'], 'local_dir': p}, open('/opt/hikari/models/wd-swinv2-tagger-v3/WEIGHTS_PIN.json','w'), indent=2)"
+# Downloading by commit caches the snapshot but writes no refs/ entry, and
+# the face detector looks its weights up without a revision; refs/main is
+# pointed at the pinned commit so the offline lookup resolves.
+RUN python -c "from huggingface_hub import hf_hub_download; import os; [hf_hub_download(r, 'model.safetensors', revision=v) for r, v in ((os.environ['AFD_DETECTOR_REPO'], os.environ['AFD_DETECTOR_REVISION']), (os.environ['AFD_LANDMARK_REPO'], os.environ['AFD_LANDMARK_REVISION']))]"     && python -c "import json, os; json.dump({'package_version': os.environ['AFD_VERSION'], 'detector': {'repo': os.environ['AFD_DETECTOR_REPO'], 'revision': os.environ['AFD_DETECTOR_REVISION']}, 'landmark': {'repo': os.environ['AFD_LANDMARK_REPO'], 'revision': os.environ['AFD_LANDMARK_REVISION']}, 'licence': 'MIT (code and weights)'}, open('/opt/hikari/models/anime-face-detector-PIN.json', 'w'), indent=2)"     && python -c "import os, pathlib; [ (lambda d: (d.mkdir(parents=True, exist_ok=True), (d / 'main').write_text(v)))(pathlib.Path(os.environ['HF_HOME'], 'hub', 'models--' + r.replace('/', '--'), 'refs')) for r, v in ((os.environ['AFD_DETECTOR_REPO'], os.environ['AFD_DETECTOR_REVISION']), (os.environ['AFD_LANDMARK_REPO'], os.environ['AFD_LANDMARK_REVISION'])) ]"
+
 # The palette tool, built from the crate as containers/worker builds it;
 # its sha256 is checked with the weights below.
 FROM ${RUST_IMAGE} AS palette

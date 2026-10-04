@@ -3,7 +3,7 @@
 # Every image is built from this repository. Settings come from `.env`
 # beside this file (copy `.env.example`; the README walks through it).
 #
-#   docker compose build inference-base     # once; large (the models)
+#   docker compose build inference-base     # GPU only; once; large (CUDA + models)
 #   docker compose build
 #   docker compose run --rm --no-deps gallery node scripts/first-run.js
 #   docker compose up -d
@@ -134,8 +134,9 @@ services:
       - /tmp:size=1g,mode=1777
     stop_grace_period: 60s
 
-  # Build-only: the models every analyze worker image copies from. Never
-  # started by `up`; build it once with `docker compose build inference-base`.
+  # Build-only: the CUDA base the GPU analyze worker is built on. Never
+  # started by `up`; a GPU install builds it once with
+  # `docker compose build inference-base`. The CPU worker does not need it.
   inference-base:
     profiles: ["build"]
     build:

@@ -13,7 +13,7 @@ worker and gallery builds refuse to run without one).
 | worker | `containers/worker/Dockerfile` | `python:3.12.13-slim-bookworm`, `rust:1.97-bookworm` | 1.7 GB |
 | inference base | `containers/inference/Dockerfile` | `pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime` | 18 GB |
 | analyze worker, NVIDIA GPU | `containers/rtx-worker/Dockerfile` | the inference base | 18 GB |
-| analyze worker, CPU | `containers/cpu-worker/Dockerfile` | `python:3.11-slim-bookworm`, weights copied from the inference base | 6 GB |
+| analyze worker, CPU | `containers/cpu-worker/Dockerfile` | `python:3.11-slim-bookworm`, weights fetched at the inference base's pins | 6 GB |
 | text encoder (mood search) | `containers/text-encoder/Dockerfile` | `python:3.11-slim-bookworm` | 1.3 GB |
 
 ```bash
@@ -21,19 +21,23 @@ docker build --build-arg HIKARI_GALLERY_VERSION=<tag> -t hikari-index/gallery:<t
 docker build -f containers/worker/Dockerfile --build-arg HIKARI_WORKER_VERSION=<tag> -t hikari-index/worker:<tag> .
 ```
 
-The analyze workers need the inference base first, under the name their
-Dockerfiles expect (or pass your own with `--build-arg BASE_IMAGE=` for the
-GPU worker, `--build-arg MODELS_IMAGE=` for the CPU worker):
+The GPU worker needs the inference base first, under the name its
+Dockerfile expects (or pass your own with `--build-arg BASE_IMAGE=`):
 
 ```bash
 docker build -f containers/inference/Dockerfile -t hikari-index/inference:inference-d1f2552-20261002.1 .
 docker build -f containers/rtx-worker/Dockerfile --build-arg HIKARI_WORKER_VERSION=<tag> -t hikari-index/rtx-worker:<tag> .
+```
+
+The CPU worker stands alone:
+
+```bash
 docker build -f containers/cpu-worker/Dockerfile --build-arg HIKARI_WORKER_VERSION=<tag> -t hikari-index/cpu-worker:<tag> .
 ```
 
-The inference base downloads the models from Hugging Face at pinned
-revisions and checks the sha256 of every weight file and of the tagger's
-tag list (configuration and tokenizer files come with the pinned revision
+The inference base and the CPU worker both download the models from
+Hugging Face at the same pinned revisions and check the sha256 of every
+weight file and of the tagger's tag list (configuration and tokenizer files come with the pinned revision
 and are not separately checked). The weights have their own licences;
 read them before you redistribute an image that contains them.
 
