@@ -1,6 +1,6 @@
-// The run records (the run folders under HIKARI_RUNS):
-// where the Windows worker's analyze results are stored, and what the
-// import stage reads to put a work into the gallery.
+// The run records (the run folders under HIKARI_RUNS): where the gallery
+// stores the results analyze workers send through the worker API, and what
+// the import stage reads to put a work into the gallery.
 //
 //   runs/<work>/identity.json, extract/, extract.log      (source worker)
 //   runs/<work>/analyze/                                   (stored here)
