@@ -7,7 +7,7 @@ for anyone (person or coding agent) changing the code. `README.md` says
 what the tool is and how to run it; `docs/HOW_IT_WORKS.md` explains the
 pipeline and the rules it keeps for anyone changing the code; installing,
 Shoko, a second machine, using the gallery, recovery and backups are in
-the user docs at https://hikari-index.github.io/hikari-index-docs/ (their own repository,
+the user docs at https://docs.hikari-index.moe/ (their own repository,
 `hikari-index/hikari-index-docs`; change them there when a change here
 alters what a user sees or types);
 `docs/BUILDING.md` builds the images.

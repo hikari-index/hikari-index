@@ -12,7 +12,7 @@
 # `.env`: `cpu` (works anywhere, slow) or `gpu` (an NVIDIA card).
 #
 # Setup, Shoko, backups, recovery, updating and an analyze worker on
-# another machine are in the docs: https://hikari-index.github.io/hikari-index-docs/
+# another machine are in the docs: https://docs.hikari-index.moe/
 
 x-hardening: &hardening
   read_only: true
@@ -43,7 +43,7 @@ x-analyze-environment: &analyze-environment
   HIKARI_SHARE: /share
   HIKARI_POLL_SECONDS: ${HIKARI_POLL_SECONDS:-30}
   # "1" makes this worker a fallback for one on another machine
-  # (https://hikari-index.github.io/hikari-index-docs/install/second-machine/).
+  # (https://docs.hikari-index.moe/install/second-machine/).
   HIKARI_WORKER_STANDBY: ${HIKARI_ANALYZE_STANDBY:-}
 
 services:

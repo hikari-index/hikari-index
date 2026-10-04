@@ -7,7 +7,7 @@ tags, an image vector for likeness and mood search), and serves them from
 a gallery on your network. Your video is never changed, scanned as a
 whole, or sent anywhere.
 
-**Documentation: https://hikari-index.github.io/hikari-index-docs/**:
+**Documentation: https://docs.hikari-index.moe/**:
 what you need, installing, connecting Shoko, using the gallery, recovery,
 backups and updating. Its source is
 [hikari-index/hikari-index-docs](https://github.com/hikari-index/hikari-index-docs).
@@ -30,7 +30,7 @@ and the rules it keeps, for anyone changing the code),
 
 This is the maintainer's own working install, being prepared for others.
 Images are not yet published to a registry, so you build them; the
-[install page](https://hikari-index.github.io/hikari-index-docs/install/)
+[install page](https://docs.hikari-index.moe/install/)
 walks through it.
 
 ## License
