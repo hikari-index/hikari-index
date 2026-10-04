@@ -5,7 +5,10 @@ name: Images
 #   merge to main  push `dev` and `sha-<short commit>`
 #   tag vX.Y.Z     push `X.Y.Z` and `latest`, then open a draft release
 # The GPU analyze worker is not built here: its CUDA base (about 18 GB)
-# does not fit on a standard runner.
+# does not fit on a standard runner. The gallery (both builds) and the
+# text encoder are also built for linux/arm64; the two workers are
+# amd64 only (a pinned amd64 FFmpeg package, an x86-64 Rust target, and
+# no arm64 CPU build of the pinned torchvision).
 on:
   pull_request:
   push:
@@ -32,6 +35,15 @@ jobs:
             context: gallery
             dockerfile: gallery/Dockerfile
             version_arg: HIKARI_GALLERY_VERSION
+            platforms: linux/amd64,linux/arm64
+          # The gallery as a viewer only (ADR-0015): no admin area, no
+          # worker API, no writes; for a copy the public can reach.
+          - image: gallery-readonly
+            context: gallery
+            dockerfile: gallery/Dockerfile
+            version_arg: HIKARI_GALLERY_VERSION
+            extra_args: HIKARI_READ_ONLY_BUILD=1
+            platforms: linux/amd64,linux/arm64
           - image: worker
             context: .
             dockerfile: containers/worker/Dockerfile
@@ -44,6 +56,7 @@ jobs:
             context: .
             dockerfile: containers/text-encoder/Dockerfile
             version_arg: ""
+            platforms: linux/amd64,linux/arm64
     steps:
       # The CPU worker (torch, models) needs more room than a runner has
       # free by default; the preinstalled SDKs it removes are unused here.
@@ -65,6 +78,10 @@ jobs:
           else
             echo "value=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
           fi
+
+      # arm64 builds run under emulation on the amd64 runner.
+      - uses: docker/setup-qemu-action@v3
+        if: contains(matrix.platforms || '', 'arm64')
 
       - uses: docker/setup-buildx-action@v3
 
@@ -93,12 +110,13 @@ jobs:
         with:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64
+          platforms: ${{ matrix.platforms || 'linux/amd64' }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             ${{ matrix.version_arg && format('{0}={1}-{2}', matrix.version_arg, matrix.image, steps.version.outputs.value) || '' }}
+            ${{ matrix.extra_args || '' }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=min
 

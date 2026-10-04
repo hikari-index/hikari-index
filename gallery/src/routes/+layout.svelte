@@ -3,6 +3,30 @@
   import { page } from "$app/state";
   let { data, children } = $props();
 
+  // The footer line as text and link pieces. An address is http(s):// plus
+  // at least one more character; sentence punctuation after it, and a
+  // closing parenthesis with no opening one inside it, stay text. Svelte
+  // escapes every piece, so nothing in the setting becomes markup.
+  function linkify(text) {
+    const parts = [];
+    let at = 0;
+    for (const m of text.matchAll(/https?:\/\/[^\s<>"]+/g)) {
+      let url = m[0];
+      for (;;) {
+        if (/[.,;:!?'"]$/.test(url)) url = url.slice(0, -1);
+        else if (url.endsWith(")") && url.split("(").length < url.split(")").length) url = url.slice(0, -1);
+        else break;
+      }
+      if (!/^https?:\/\/[^/?#\s]/.test(url)) continue; // "https://" alone stays text
+      if (m.index > at) parts.push({ text: text.slice(at, m.index) });
+      parts.push({ text: url.replace(/^https?:\/\//, ""), href: url });
+      at = m.index + url.length;
+    }
+    if (at < text.length) parts.push({ text: text.slice(at) });
+    return parts;
+  }
+  const noticeParts = $derived(linkify(data.notice ?? ""));
+
   // Which top-level section the current path belongs to, for the header mark.
   const section = $derived.by(() => {
     if (page.error) return null; // an address that is nowhere marks nothing
@@ -33,6 +57,11 @@
 <main id="main">
   {@render children()}
 </main>
+{#if data.notice}
+  <footer class="notice">
+    {#each noticeParts as part, i (i)}{#if part.href}<a href={part.href} rel="noopener">{part.text}</a>{:else}{part.text}{/if}{/each}
+  </footer>
+{/if}
 
 <style>
   .skip {
@@ -91,6 +120,18 @@
   .admin-link {
     margin-left: var(--s-4);
     color: var(--text-3);
+  }
+  .notice {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: var(--s-4) var(--gutter) var(--s-6);
+    border-top: 1px solid var(--line-1);
+    font-size: var(--t-meta);
+    color: var(--text-3);
+    overflow-wrap: anywhere; /* a long address must not widen a phone page */
+  }
+  .notice a {
+    color: var(--text-2);
   }
   main {
     max-width: 1920px; /* raised from 1400 on 2026-09-27: an ultrawide was showing the 1400 grid with black margins */

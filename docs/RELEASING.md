@@ -32,10 +32,13 @@ One package per image on the GitHub Container Registry:
 | Image | Package |
 |---|---|
 | gallery | `ghcr.io/hikari-index/gallery` |
+| gallery, read-only (a viewer with no admin area) | `ghcr.io/hikari-index/gallery-readonly` |
 | worker that reads your video | `ghcr.io/hikari-index/worker` |
 | analyze worker, CPU | `ghcr.io/hikari-index/cpu-worker` |
 | text encoder | `ghcr.io/hikari-index/text-encoder` |
 
+The gallery, the read-only gallery and the text encoder are published for
+`linux/amd64` and `linux/arm64`; the two workers for `linux/amd64` only.
 The GPU analyze worker is not published (its base image is too large to
 build on GitHub's runners); build it yourself, see
 [BUILDING.md](BUILDING.md).
