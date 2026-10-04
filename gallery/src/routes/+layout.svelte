@@ -3,11 +3,29 @@
   import { page } from "$app/state";
   let { data, children } = $props();
 
-  // The footer line, split so its web addresses render as links; the rest
-  // stays text (Svelte escapes it).
-  const noticeParts = $derived(
-    (data.notice ?? "").split(/(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)])/).filter(Boolean),
-  );
+  // The footer line as text and link pieces. An address is http(s):// plus
+  // at least one more character; sentence punctuation after it, and a
+  // closing parenthesis with no opening one inside it, stay text. Svelte
+  // escapes every piece, so nothing in the setting becomes markup.
+  function linkify(text) {
+    const parts = [];
+    let at = 0;
+    for (const m of text.matchAll(/https?:\/\/[^\s<>"]+/g)) {
+      let url = m[0];
+      for (;;) {
+        if (/[.,;:!?'"]$/.test(url)) url = url.slice(0, -1);
+        else if (url.endsWith(")") && url.split("(").length < url.split(")").length) url = url.slice(0, -1);
+        else break;
+      }
+      if (!/^https?:\/\/[^/?#\s]/.test(url)) continue; // "https://" alone stays text
+      if (m.index > at) parts.push({ text: text.slice(at, m.index) });
+      parts.push({ text: url.replace(/^https?:\/\//, ""), href: url });
+      at = m.index + url.length;
+    }
+    if (at < text.length) parts.push({ text: text.slice(at) });
+    return parts;
+  }
+  const noticeParts = $derived(linkify(data.notice ?? ""));
 
   // Which top-level section the current path belongs to, for the header mark.
   const section = $derived.by(() => {
@@ -41,7 +59,7 @@
 </main>
 {#if data.notice}
   <footer class="notice">
-    {#each noticeParts as part, i (i)}{#if /^https?:\/\//.test(part)}<a href={part} rel="noopener">{part.replace(/^https?:\/\//, "")}</a>{:else}{part}{/if}{/each}
+    {#each noticeParts as part, i (i)}{#if part.href}<a href={part.href} rel="noopener">{part.text}</a>{:else}{part.text}{/if}{/each}
   </footer>
 {/if}
 
@@ -110,6 +128,7 @@
     border-top: 1px solid var(--line-1);
     font-size: var(--t-meta);
     color: var(--text-3);
+    overflow-wrap: anywhere; /* a long address must not widen a phone page */
   }
   .notice a {
     color: var(--text-2);
