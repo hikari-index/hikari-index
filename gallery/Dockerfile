@@ -5,7 +5,7 @@
 # database migrations the app applies at startup (ADR-0010). No source tree, no dev dependencies, no
 # repository mount. Runs as a non-root user; the web images folder is mounted
 # read-only at /images, and the only thing it writes on disk is the analyze
-# records under /runs.
+# results (and a removed work's files) in the runs folder HIKARI_RUNS names.
 #
 # Runtime environment (see gallery/.env.example): DATABASE_URL,
 # HIKARI_IMAGES (=/images here), HIKARI_ADMIN_USER,
@@ -13,8 +13,9 @@
 # HIKARI_SHOKO_BASE_URL + HIKARI_SHOKO_API_KEY_FILE (optional; the Onboard
 # picker, with the non-admin key file mounted read-only), and ORIGIN: the
 # URL the LAN reaches the gallery at, which the admin sign-in form needs to
-# accept a POST. PORT defaults to 3000. HIKARI_RUNS (the run records,
-# mounted read/write at /runs) turns on the import stage and the storing of
+# accept a POST. PORT defaults to 3000. HIKARI_RUNS (the run records;
+# compose mounts the data volume read/write at /share and sets
+# HIKARI_RUNS=/share/runs) turns on the import stage and the storing of
 # analyze results; HIKARI_WORKER_TOKENS ("name:token,name:token", one per
 # analyze worker machine) turns on the worker API they use. BODY_SIZE_LIMIT
 # is 64M for a worker's results upload. HIKARI_ADMIN_LINK=0 hides the

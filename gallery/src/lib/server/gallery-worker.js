@@ -1,6 +1,6 @@
 // The gallery's own worker: the import stage (capability "gallery"), run
 // inside the gallery process because it only reads run records and writes
-// the database. Off unless HIKARI_RUNS is set (the /runs mount), so a
+// the database. Off unless HIKARI_RUNS is set (the runs folder), so a
 // gallery without the run records never takes an import it cannot do.
 // With no import waiting, a pass keeps the repeat marks current (works
 // whose series changed since they were last matched; repeats.js).

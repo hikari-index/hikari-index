@@ -1,9 +1,8 @@
 // The app's Shoko connection: ./shoko-client.js with its settings from the
 // environment. HIKARI_SHOKO_BASE_URL is the server; the key comes from the
 // file HIKARI_SHOKO_API_KEY_FILE names (mounted read-only, e.g. at
-// /run/secrets/shoko-api-key). Shoko is read from the Linux control plane
-// only (the gallery container), never from the Windows dev server by
-// convenience; without these settings the Onboard page says so.
+// /run/secrets/shoko-api-key). Only the gallery's server code reads Shoko;
+// without these settings the Onboard page says so.
 import { env } from "$env/dynamic/private";
 import { client, readKey, ShokoError } from "./shoko-client.js";
 
