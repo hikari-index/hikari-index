@@ -1,12 +1,22 @@
 # Hikari Index on one machine: the gallery, its database, the worker that
 # reads your video, an analyze worker and the text encoder for mood search.
-# Every image is built from this repository. Settings come from `.env`
-# beside this file (copy `.env.example`; the README walks through it).
+# Settings come from `.env` beside this file (copy `.env.example`).
 #
-#   docker compose build inference-base     # GPU only; once; large (CUDA + models)
-#   docker compose build
+# The images are published on ghcr.io (docs/RELEASING.md); HIKARI_VERSION
+# picks which: `latest` (the default), a release such as `1.0.0`, or `dev`.
+#
+#   docker compose pull
 #   docker compose run --rm --no-deps gallery node scripts/first-run.js
 #   docker compose up -d
+#
+# Run `docker compose pull` before `up`: with a build section beside the
+# image, `up` builds a missing image instead of pulling it. To build every
+# image from this checkout instead, `docker compose build` (it tags them
+# with the same names). The GPU analyze worker is never published; a GPU
+# install builds it:
+#
+#   docker compose build inference-base     # once; large (CUDA + models)
+#   docker compose build analyze-gpu
 #
 # The analyze worker comes in two kinds, chosen by COMPOSE_PROFILES in
 # `.env`: `cpu` (works anywhere, slow) or `gpu` (an NVIDIA card).
@@ -71,8 +81,8 @@ services:
     build:
       context: gallery
       args:
-        HIKARI_GALLERY_VERSION: gallery-${HIKARI_VERSION:-local}
-    image: hikari-index/gallery:${HIKARI_VERSION:-local}
+        HIKARI_GALLERY_VERSION: gallery-${HIKARI_VERSION:-latest}-local
+    image: ghcr.io/hikari-index/gallery:${HIKARI_VERSION:-latest}
     depends_on:
       db:
         condition: service_healthy
@@ -111,8 +121,8 @@ services:
       context: .
       dockerfile: containers/worker/Dockerfile
       args:
-        HIKARI_WORKER_VERSION: worker-${HIKARI_VERSION:-local}
-    image: hikari-index/worker:${HIKARI_VERSION:-local}
+        HIKARI_WORKER_VERSION: worker-${HIKARI_VERSION:-latest}-local
+    image: ghcr.io/hikari-index/worker:${HIKARI_VERSION:-latest}
     depends_on:
       # The gallery applies the database migrations and is the first to
       # mount the data volume.
@@ -151,8 +161,8 @@ services:
       context: .
       dockerfile: containers/cpu-worker/Dockerfile
       args:
-        HIKARI_WORKER_VERSION: cpu-worker-${HIKARI_VERSION:-local}
-    image: hikari-index/cpu-worker:${HIKARI_VERSION:-local}
+        HIKARI_WORKER_VERSION: cpu-worker-${HIKARI_VERSION:-latest}-local
+    image: ghcr.io/hikari-index/cpu-worker:${HIKARI_VERSION:-latest}
     environment:
       <<: *analyze-environment
       HIKARI_DEVICE: cpu
@@ -164,8 +174,10 @@ services:
       context: .
       dockerfile: containers/rtx-worker/Dockerfile
       args:
-        HIKARI_WORKER_VERSION: rtx-worker-${HIKARI_VERSION:-local}
-    image: hikari-index/rtx-worker:${HIKARI_VERSION:-local}
+        HIKARI_WORKER_VERSION: rtx-worker-${HIKARI_VERSION:-latest}-local
+    # Not published: always built here (`docker compose build analyze-gpu`).
+    image: hikari-index/rtx-worker:${HIKARI_VERSION:-latest}
+    pull_policy: build
     environment:
       <<: *analyze-environment
       HIKARI_DEVICE: cuda
@@ -182,7 +194,7 @@ services:
     build:
       context: .
       dockerfile: containers/text-encoder/Dockerfile
-    image: hikari-index/text-encoder:${HIKARI_VERSION:-local}
+    image: ghcr.io/hikari-index/text-encoder:${HIKARI_VERSION:-latest}
     environment:
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"

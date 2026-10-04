@@ -28,10 +28,12 @@ and the rules it keeps, for anyone changing the code),
   gallery reads your series, episodes and files from it (read-only, a
   non-admin key). Without it you add files by path or a folder at a time.
 
-This is the maintainer's own working install, being prepared for others.
-Images are not yet published to a registry, so you build them; the
-[install page](https://docs.hikari-index.moe/install/)
-walks through it.
+The gallery, the worker that reads your video, the CPU analyze worker and
+the text encoder are published on the GitHub Container Registry
+(`ghcr.io/hikari-index/...`), so an install pulls them; the
+[install page](https://docs.hikari-index.moe/install/) walks through it.
+The GPU analyze worker is built on your machine. Versions follow
+[docs/RELEASING.md](docs/RELEASING.md).
 
 ## License
 
