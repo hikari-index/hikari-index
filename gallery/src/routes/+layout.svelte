@@ -3,6 +3,12 @@
   import { page } from "$app/state";
   let { data, children } = $props();
 
+  // The footer line, split so its web addresses render as links; the rest
+  // stays text (Svelte escapes it).
+  const noticeParts = $derived(
+    (data.notice ?? "").split(/(https?:\/\/[^\s<>"]+[^\s<>".,;:!?)])/).filter(Boolean),
+  );
+
   // Which top-level section the current path belongs to, for the header mark.
   const section = $derived.by(() => {
     if (page.error) return null; // an address that is nowhere marks nothing
@@ -33,6 +39,11 @@
 <main id="main">
   {@render children()}
 </main>
+{#if data.notice}
+  <footer class="notice">
+    {#each noticeParts as part, i (i)}{#if /^https?:\/\//.test(part)}<a href={part} rel="noopener">{part.replace(/^https?:\/\//, "")}</a>{:else}{part}{/if}{/each}
+  </footer>
+{/if}
 
 <style>
   .skip {
@@ -91,6 +102,17 @@
   .admin-link {
     margin-left: var(--s-4);
     color: var(--text-3);
+  }
+  .notice {
+    max-width: 1920px;
+    margin: 0 auto;
+    padding: var(--s-4) var(--gutter) var(--s-6);
+    border-top: 1px solid var(--line-1);
+    font-size: var(--t-meta);
+    color: var(--text-3);
+  }
+  .notice a {
+    color: var(--text-2);
   }
   main {
     max-width: 1920px; /* raised from 1400 on 2026-09-27: an ultrawide was showing the 1400 grid with black margins */

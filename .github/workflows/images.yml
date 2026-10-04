@@ -32,6 +32,13 @@ jobs:
             context: gallery
             dockerfile: gallery/Dockerfile
             version_arg: HIKARI_GALLERY_VERSION
+          # The gallery as a viewer only (ADR-0015): no admin area, no
+          # worker API, no writes; for a copy the public can reach.
+          - image: gallery-readonly
+            context: gallery
+            dockerfile: gallery/Dockerfile
+            version_arg: HIKARI_GALLERY_VERSION
+            extra_args: HIKARI_READ_ONLY_BUILD=1
           - image: worker
             context: .
             dockerfile: containers/worker/Dockerfile
@@ -99,6 +106,7 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
             ${{ matrix.version_arg && format('{0}={1}-{2}', matrix.version_arg, matrix.image, steps.version.outputs.value) || '' }}
+            ${{ matrix.extra_args || '' }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=min
 

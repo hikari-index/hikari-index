@@ -27,3 +27,13 @@ const off = (value) => ["0", "false", "no", "off"].includes(String(value ?? "").
 export function adminLink() {
   return !readOnly() && !off(env.HIKARI_ADMIN_LINK);
 }
+
+// A line of the operator's own text at the foot of every page
+// (HIKARI_NOTICE): attribution for openly licensed material a public
+// copy shows, or "this is a demonstration". Plain text, at most 500
+// characters; web addresses in it become links (+layout.svelte). Unset,
+// there is no footer.
+export function notice() {
+  const text = String(env.HIKARI_NOTICE ?? "").replace(/\s+/g, " ").trim();
+  return text ? text.slice(0, 500) : null;
+}

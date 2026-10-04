@@ -32,6 +32,7 @@ One package per image on the GitHub Container Registry:
 | Image | Package |
 |---|---|
 | gallery | `ghcr.io/hikari-index/gallery` |
+| gallery, read-only (a viewer with no admin area) | `ghcr.io/hikari-index/gallery-readonly` |
 | worker that reads your video | `ghcr.io/hikari-index/worker` |
 | analyze worker, CPU | `ghcr.io/hikari-index/cpu-worker` |
 | text encoder | `ghcr.io/hikari-index/text-encoder` |
