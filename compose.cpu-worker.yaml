@@ -9,8 +9,10 @@
 # .env.cpu-worker.example). The share is a Docker volume made once on the
 # machine (it holds the share credential), named by HIKARI_SHARE_VOLUME.
 #
-#   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml build
+#   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml pull
 #   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml up -d
+#
+# (or `build` instead of `pull`, to build the image from this checkout).
 #   docker compose --env-file .env.cpu-worker -f compose.cpu-worker.yaml logs -f
 services:
   analyze-worker:
@@ -18,10 +20,10 @@ services:
       context: .
       dockerfile: containers/cpu-worker/Dockerfile
       args:
-        HIKARI_WORKER_VERSION: "${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.cpu-worker}"
-    # Built here by default. Set HIKARI_IMAGE_REPOSITORY to pull the tag
-    # from a registry of yours instead of building.
-    image: ${HIKARI_IMAGE_REPOSITORY:-hikari-index/cpu-worker}:${HIKARI_WORKER_VERSION:?set HIKARI_WORKER_VERSION in .env.cpu-worker}
+        HIKARI_WORKER_VERSION: cpu-worker-${HIKARI_VERSION:-latest}-local
+    # The published image at HIKARI_VERSION (the same version as the main
+    # machine). HIKARI_IMAGE_REPOSITORY points it at a registry of yours.
+    image: ${HIKARI_IMAGE_REPOSITORY:-ghcr.io/hikari-index/cpu-worker}:${HIKARI_VERSION:-latest}
     env_file: .env.cpu-worker
     environment:
       HIKARI_SHARE: /share

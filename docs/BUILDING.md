@@ -1,8 +1,9 @@
 # Building the images
 
-Every image builds from this repository and public base images. Nothing
-is pulled from a private registry. For an install on one machine,
-`docker compose build` does all of this for you (see the README); the
+Every image builds from this repository and public base images. An
+install normally pulls the published images instead (docs/RELEASING.md);
+the GPU analyze worker is the one it always builds. `docker compose
+build` builds everything from your checkout under the same names; the
 commands below are for building one image by hand. Run the commands from the repository
 root; the tag you pass is what the image reports as its version (the
 worker and gallery builds refuse to run without one).
