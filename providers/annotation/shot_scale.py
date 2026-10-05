@@ -42,8 +42,10 @@ from . import taxonomy
 #: corrected to close-up. The one extreme-wide assertion (0.0007) was also
 #: corrected, to wide. On the calibration sample these cuts score 48/53
 #: against the old bounds' 44/53, and every remaining miss is an adjacent
-#: class. `extreme-close-up` stays reachable through the tagger lane, which
-#: names it directly.
+#: class. No lane asserts the extremes today: the allowlist maps no tagger tag
+#: to `extreme-close-up` or `extreme-wide`, and the scenery lane answers
+#: `wide`. Making either reachable needs a tag in the checkpoint's vocabulary
+#: that names it, checked against reviewed frames.
 FACE_CUTS = (
     (0.14, "close-up"),
     (0.009, "medium"),
@@ -114,10 +116,11 @@ def from_scenery(scenery_tagged: bool) -> ShotScale:
     roughly a third of them and `no_humans` on far more, which is the point:
     the broader tag is broader because it is answering a different question.
 
-    Scores low and lands in the review band. `scenery` is a corroborating tag in
-    the allowlist precisely because it is weak evidence; letting it decide alone
-    is a deliberate relaxation for frames that would otherwise say nothing, not
-    a promotion.
+    Scores low and lands in the review band. `scenery` has no allowlist
+    mapping: it says what a frame shows, not how far away the camera is, so it
+    is too weak to corroborate a tagger verdict. Letting it decide here is a
+    deliberate relaxation for frames that would otherwise say nothing, not a
+    promotion.
 
     KNOWN FAILURE, observed not hypothesised: a close-up of a natural subject is
     scenery and is not wide. A macro shot of wheat heads against the sky was

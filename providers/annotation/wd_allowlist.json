@@ -1,5 +1,5 @@
 {
-  "allowlist_version": "wd-swinv2-v3-allowlist-2",
+  "allowlist_version": "wd-swinv2-v3-allowlist-3",
   "taxonomy_version": "visual-taxonomy-v3",
   "source_vocabulary": {
     "checkpoint": "SmilingWolf/wd-swinv2-tagger-v3",
@@ -552,13 +552,6 @@
       "family": "shot_scale",
       "field": "shot_scale",
       "value": "close-up",
-      "role": "corroborating"
-    },
-    {
-      "tag": "scenery",
-      "family": "shot_scale",
-      "field": "shot_scale",
-      "value": "extreme-wide",
       "role": "corroborating"
     },
     {

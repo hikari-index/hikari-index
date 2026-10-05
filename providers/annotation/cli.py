@@ -78,9 +78,9 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
         face_count = face_entry["face_count"] if face_entry else None
         face_fraction = (face_entry.get("largest_face_fraction")
                          if face_entry else None)
-        # The `scenery` tag is read raw rather than through the allowlist. It is
-        # a corroborating mapping there, so it cannot decide a field alone;
-        # shot_scale relaxes that for frames no other lane reaches. It still has
+        # The `scenery` tag is read raw: the allowlist does not map it, because
+        # it names subject matter rather than camera distance. shot_scale uses
+        # it only for frames no other lane reaches. It still has
         # to clear the same tagger cut as everything else -- a plain membership
         # test would silently fire on sub-cut tags whenever the manifest retained
         # them, coupling the lane to a manifest's retention floor rather than the
