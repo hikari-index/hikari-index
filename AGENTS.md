@@ -13,8 +13,10 @@ alters what a user sees or types);
 `docs/BUILDING.md` builds the images; `docs/RELEASING.md` defines the
 version numbers (SemVer from 1.0.0: MAJOR when the user has to act, MINOR
 for new things with nothing to do, PATCH for fixes), the image tags and
-how a release is made. Label a pull request `action-needed` when merging
-it will need the user to do something.
+how a release is made. Label a pull request `action-needed` only when,
+after updating as the docs say, the user still has to do something by
+hand; `docs/RELEASING.md` has a table of which changes qualify (a bug
+fix, a rule change or a migration the gallery applies itself does not).
 
 ## Layout
 

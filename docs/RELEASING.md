@@ -21,6 +21,31 @@ when they update:
 
 A change to the docs, tests or CI alone is not released.
 
+### Is my pull request `action-needed`?
+
+Ask one question: **after updating the way the docs say (pull the new
+images, restart), does anything still not work, or not work the same,
+until the person running it does something by hand?** If yes, label the
+pull request `action-needed` and say in its description exactly what
+they must do. If no, leave it unlabeled.
+
+| Change | `action-needed`? |
+|---|---|
+| A setting renamed, removed, or newly required | yes |
+| An edit needed to `compose.yaml`, an `.env` file or a container template | yes |
+| Something to rebuild by hand (the GPU worker's base, a second machine's worker) | yes |
+| Old and new images can't run side by side (a worker elsewhere must update at the same time) | yes |
+| Work has to be onboarded again to keep working | yes |
+| A feature or a setting removed | yes |
+| A bug fix, a label rule or allowlist change, a new model version recorded with each run | no |
+| A database migration the gallery applies by itself on start | no (say in the description if it stops a rollback) |
+| A new optional setting with a default that keeps today's behavior | no |
+| Better results only for work analyzed from now on, or after an optional re-run | no (say so in the description; re-running stays the user's choice) |
+| Docs, tests, CI, comments | no (and not released at all) |
+
+An `action-needed` pull request makes the next release MAJOR. When in
+doubt, ask in the pull request rather than guessing.
+
 Every image carries the same version. A release builds all of them from
 one commit, even if only one changed, so "run the same version
 everywhere" means "every image shows the same number".
@@ -56,8 +81,9 @@ once pushed. `latest` and `dev` are meant to move.
 ## Making a release
 
 1. Decide the number from the definitions above, by looking at what was
-   merged since the last release (`git log v1.5.0..main`). A pull
-   request that needs the user to act carries the `action-needed` label.
+   merged since the last release (`git log v1.5.0..main`). Any merged
+   pull request labeled `action-needed` (see the table above) makes it
+   MAJOR.
 2. Tag `main` and push the tag:
 
    ```bash
