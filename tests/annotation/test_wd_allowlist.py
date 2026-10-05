@@ -126,6 +126,28 @@ class TestTextEvidence:
         assert from_predictions({"night": 0.9}, ALLOWLIST).text_present is False
 
 
+def test_every_corroborating_value_has_a_primary_tag():
+    """A corroborating tag only adds to a value some primary tag names
+    (`_resolve_field`), so one whose value no primary tag shares can never
+    affect a label. `scenery` pointed at `extreme-wide`, which no primary tag
+    names, and did nothing."""
+    primary = {(m.field, m.value) for m in ALLOWLIST.mappings.values()
+               if m.role == "primary"}
+    dead = sorted(m.tag for m in ALLOWLIST.mappings.values()
+                  if m.role == "corroborating" and (m.field, m.value) not in primary)
+    assert dead == []
+
+
+def test_scenery_corroborates_the_value_its_lane_answers():
+    """The scenery lane (shot_scale.from_scenery) answers `wide`; the
+    allowlist must not say the same tag means something else."""
+    assert ALLOWLIST.lookup("scenery").value == "wide"
+    wide = from_predictions({"wide_shot": 0.5, "scenery": 0.5}, ALLOWLIST)
+    alone = from_predictions({"wide_shot": 0.5}, ALLOWLIST)
+    assert wide.value("shot_scale") == "wide"
+    assert wide.score("shot_scale") > alone.score("shot_scale")
+
+
 def test_allowlist_version_pins_the_taxonomy():
     document = json.loads(ALLOWLIST_PATH.read_text(encoding="utf-8"))
     assert document["taxonomy_version"] == taxonomy.TAXONOMY_VERSION

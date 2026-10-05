@@ -45,8 +45,8 @@ def test_face_occupancy_orders_the_scales(fraction, expected):
 def test_the_face_lane_never_asserts_the_extreme_classes():
     """Calibrated on the reviewed gold sample: human extreme-close-ups and
     close-ups overlap in fraction (0.4731 ECU vs 0.5315 CU), so no cut
-    separates them. 5 of 7 old extreme-close-up calls were corrected. The
-    extremes stay reachable through the tagger lane only."""
+    separates them. 5 of 7 old extreme-close-up calls were corrected. No
+    other lane asserts the extremes either (see FACE_CUTS)."""
     for fraction in (0.45, 0.60, 0.95, 0.0007, 0.0001):
         assert from_face_occupancy(fraction).value not in (
             "extreme-close-up", "extreme-wide")
