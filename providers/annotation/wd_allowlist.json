@@ -555,13 +555,6 @@
       "role": "corroborating"
     },
     {
-      "tag": "scenery",
-      "family": "shot_scale",
-      "field": "shot_scale",
-      "value": "wide",
-      "role": "corroborating"
-    },
-    {
       "tag": "cowboy_shot",
       "family": "shot_scale",
       "field": "shot_scale",

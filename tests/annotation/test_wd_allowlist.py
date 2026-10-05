@@ -130,7 +130,7 @@ def test_every_corroborating_value_has_a_primary_tag():
     """A corroborating tag only adds to a value some primary tag names
     (`_resolve_field`), so one whose value no primary tag shares can never
     affect a label. `scenery` pointed at `extreme-wide`, which no primary tag
-    names, and did nothing."""
+    names, and did nothing; it was removed."""
     primary = {(m.field, m.value) for m in ALLOWLIST.mappings.values()
                if m.role == "primary"}
     dead = sorted(m.tag for m in ALLOWLIST.mappings.values()
@@ -138,14 +138,15 @@ def test_every_corroborating_value_has_a_primary_tag():
     assert dead == []
 
 
-def test_scenery_corroborates_the_value_its_lane_answers():
-    """The scenery lane (shot_scale.from_scenery) answers `wide`; the
-    allowlist must not say the same tag means something else."""
-    assert ALLOWLIST.lookup("scenery").value == "wide"
-    wide = from_predictions({"wide_shot": 0.5, "scenery": 0.5}, ALLOWLIST)
-    alone = from_predictions({"wide_shot": 0.5}, ALLOWLIST)
-    assert wide.value("shot_scale") == "wide"
-    assert wide.score("shot_scale") > alone.score("shot_scale")
+def test_scenery_has_no_allowlist_mapping():
+    """`scenery` names subject matter, not camera distance: a close-up of a
+    flower can carry it. It reaches shot_scale only through the scenery lane
+    (shot_scale.from_scenery), never as tagger evidence."""
+    assert ALLOWLIST.lookup("scenery") is None
+    with_scenery = from_predictions({"upper_body": 0.5, "full_body": 0.45,
+                                     "scenery": 0.9}, ALLOWLIST)
+    without = from_predictions({"upper_body": 0.5, "full_body": 0.45}, ALLOWLIST)
+    assert with_scenery.fields["shot_scale"] == without.fields["shot_scale"]
 
 
 def test_allowlist_version_pins_the_taxonomy():
