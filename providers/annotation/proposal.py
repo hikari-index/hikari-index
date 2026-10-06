@@ -25,7 +25,9 @@ from .composition_labels import resolve as resolve_composition
 from .shot_scale import NEIGHBOR, head_opinion, resolve as resolve_scale
 from .wd_labels import WdLabels
 
-PROVIDER_VERSION = "0.1.0"
+# 0.2.0 (2026-10-06): per-label sources in provenance, the head lanes for
+# shot scale and composition.
+PROVIDER_VERSION = "0.2.0"
 
 # Mirrors $defs/opaqueId in annotation-record.schema.json. Enforced here so an
 # unusable id fails at construction rather than at review-time validation.

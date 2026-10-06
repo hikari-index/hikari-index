@@ -140,3 +140,12 @@ def test_disagreement_is_recorded_beside_the_answer_and_changes_nothing():
     assert (d["head"], d["agrees"]) == ("close-up", False)
     # no head, no opinion
     assert "agrees" not in field_sources(CandidateEvidence(**base))["shot_scale"]
+
+def test_box_edges_round_like_imgutils():
+    """float32 arithmetic as in imgutils' _xy_postprocess: an edge at
+    300.8333435 on the 640 input lands on 902 of 1920, not 903."""
+    session = _FakeSession([
+        [300.8333435058594 + 30.0], [300.0], [60.0], [60.0], [0.9],
+    ])
+    found = detect(session, Image.new("RGB", (1920, 1080)), score_cut=0.4, iou=0.5)
+    assert found[0]["box"][0] == 902
