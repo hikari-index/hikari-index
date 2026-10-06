@@ -31,10 +31,17 @@
   <p class="note">No still has its labels marked checked yet. In the still editor, tick "Labels checked" when you have looked at every label, then save.</p>
 {:else}
   <p class="meta">
-    {data.total} checked {data.total === 1 ? "still" : "stills"}, labeled by
-    {#each data.runs as r, i (i)}{i ? "; " : ""}<span class="mono">{r.allowlist ?? "an older run"}</span> ({r.n}){/each}.
-    <a href="/admin/labels/export.json" download>Download the checks</a> to score a new run against them.
+    {data.total} checked {data.total === 1 ? "still" : "stills"}. <a href="/admin/labels/export.json" download>Download the checks</a> to score a new run against them.
   </p>
+  <p class="meta">What made the labels you checked{data.runs.length > 1 ? " (more than one setup: the shares below mix them)" : ""}:</p>
+  <ul class="meta runs">
+    {#each data.runs as r, i (i)}
+      <li>
+        {r.n} {r.n === 1 ? "still" : "stills"}:
+        {#if r.allowlist}tag list <span class="mono">{r.allowlist}</span>{:else}a run from before the tag list was recorded{/if}{#if r.cuts?.tag != null}, tags counted from score {r.cuts.tag}{#if r.cuts.scene != null && r.cuts.scene !== r.cuts.tag} ({r.cuts.scene} for setting, time and weather){/if}{/if}{#if r.fusion}, fusion <span class="mono">{r.fusion}</span>{/if}
+      </li>
+    {/each}
+  </ul>
 
   {#each data.families as f (f.family)}
     <section aria-labelledby={`h-${f.family}`}>
@@ -73,6 +80,10 @@
 <style>
   .intro {
     max-width: 72ch;
+  }
+  .runs {
+    margin: 0;
+    padding-left: var(--s-4);
   }
   section {
     margin-top: var(--s-5);

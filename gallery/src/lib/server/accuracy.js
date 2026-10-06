@@ -94,8 +94,9 @@ export function runsOf(checks) {
   const runs = new Map();
   for (const c of checks) {
     const r = c.run ?? {};
-    const key = JSON.stringify([r.taxonomy ?? null, r.allowlist ?? null, r.fusion ?? null]);
-    const entry = runs.get(key) ?? { taxonomy: r.taxonomy ?? null, allowlist: r.allowlist ?? null, fusion: r.fusion ?? null, n: 0 };
+    const cuts = r.cuts ? { tag: r.cuts.tag_threshold ?? null, scene: r.cuts.scene_tag_threshold ?? null } : null;
+    const key = JSON.stringify([r.taxonomy ?? null, r.allowlist ?? null, r.fusion ?? null, cuts?.tag ?? null, cuts?.scene ?? null]);
+    const entry = runs.get(key) ?? { taxonomy: r.taxonomy ?? null, allowlist: r.allowlist ?? null, fusion: r.fusion ?? null, cuts, n: 0 };
     entry.n += 1;
     runs.set(key, entry);
   }

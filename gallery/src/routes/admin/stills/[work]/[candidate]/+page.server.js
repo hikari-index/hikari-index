@@ -61,6 +61,13 @@ export const actions = {
     const tagsHuman = { add: [...new Set([...previouslyAdded, ...add])], remove };
     const note = String(form.get("note") ?? "").trim() || null;
 
+    // A checked save certifies the labels the page showed; refuse it, before
+    // anything is written, if a re-run has changed them since.
+    const checked = form.get("labels_checked") === "on";
+    const seen = JSON.stringify(Object.entries(still.machine.facets).sort());
+    if (checked && String(form.get("labels_seen") ?? "") !== seen) {
+      return fail(409, { message: "The machine's labels changed since this page was opened (the work was re-run). Nothing was saved; look at the labels again.", values: values() });
+    }
     await setCorrections(id, {
       facetsHuman: Object.keys(facetsHuman).length ? facetsHuman : null,
       tagsHuman: tagsHuman.add.length || tagsHuman.remove.length ? tagsHuman : null,
@@ -69,7 +76,7 @@ export const actions = {
     // "Labels checked": every label was looked at, so what was left as
     // proposed is agreement. Saved as a snapshot of what was judged (the
     // accuracy report); unticked, the mark comes off.
-    if (form.get("labels_checked") === "on") {
+    if (checked) {
       await setLabelCheck(id, {
         at: new Date().toISOString(),
         run: await workLabelsRun(still.workId),
