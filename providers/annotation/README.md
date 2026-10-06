@@ -88,8 +88,8 @@ on. It comes last, so it only fills frames the other lanes left empty (14%
 of the test set), and changes no other lane's answer. On those fills it is a
 best guess, not an answer: it agreed with the reviewed sample on 3 of 10
 frames, so it scores low. The same head box gives composition a subject
-position where no face was found; there the evidence is strong (its centre
-tracks the face centre at Pearson 0.978 where both exist).
+position where no face was found; there the evidence is strong (its center
+tracks the face center at Pearson 0.978 where both exist).
 
 Two known limits, both measured rather than assumed. The face cut points sit at
 the geometric mean between the medians of adjacent classes, which is defensible

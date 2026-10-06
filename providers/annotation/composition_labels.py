@@ -49,7 +49,7 @@ class CompositionVerdict:
 
 
 def _subject_x(faces: Optional[Sequence[dict]], width: int) -> Optional[float]:
-    """Horizontal centre of the LARGEST box (a face, or a head), in 0..1.
+    """Horizontal center of the LARGEST box (a face, or a head), in 0..1.
 
     Not the area-weighted centroid of every face: on a two-shot that lands in
     the gap between two subjects and reads as `centered` when neither subject is
@@ -98,7 +98,7 @@ def resolve(
     x, score, basis = _subject_x(faces, frame_width), GEOMETRY_SCORE, "face-position"
     if x is None:
         # No face: the largest head, from the anime head detector, which sees
-        # the back of a head and a profile. Its centre tracks the face centre
+        # the back of a head and a profile. Its center tracks the face center
         # at Pearson 0.978 on the 852 gold-set frames that have both (the best
         # non-model estimator reached 0.689 and lost), and these rules give
         # the same value from either on 82% of them; the rest sit near a
