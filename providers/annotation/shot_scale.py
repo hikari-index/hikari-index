@@ -76,7 +76,8 @@ NEAR_HEAD_CUT = 0.05
 #: found on a hand, a distant head behind a close-up subject and full
 #: figures where medium and wide are arguable; by eye on 36 random fills
 #: about 28 looked right. Its scores sit below the 0.35 the gallery treats
-#: as unsure, so what it proposes is for a person to accept or correct.
+#: as unsure for scene labels; routing unsure shot-scale labels to Worth a
+#: look is #19.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
 HEAD_BASE_SCORE = 0.30
