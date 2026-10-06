@@ -73,6 +73,10 @@ export const works = pgTable("works", {
   // differs from the current set, the gallery matches the work again
   // (lib/server/repeats.js, ADR-0012).
   repeatsKey: text("repeats_key"),
+  // What made this work's labels, from the analyze record's proposals
+  // (taxonomy, tagger allowlist, fusion version and cut-offs). Copied into
+  // a still's label check so the accuracy report can tell runs apart.
+  labelsRun: jsonb("labels_run").$type(),
   importedAt: timestamp("imported_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -108,6 +112,16 @@ export const stills = pgTable("stills", {
   // (or null to clear a machine value); tagsHuman is {add: [], remove: []}.
   facetsHuman: jsonb("facets_human").$type(),
   tagsHuman: jsonb("tags_human").$type(),
+  // Which signal proposed each machine facet and its score, from the run:
+  // {family: {s: "face-occupancy", p: 0.42}}. Null for runs made before
+  // fusion recorded it.
+  facetSources: jsonb("facet_sources").$type(),
+  // The owner's "labels checked" mark: every label of the still was looked
+  // at, so what was left as proposed counts as agreement. A snapshot taken
+  // at that save, so a later re-import or edit does not change what was
+  // judged: {at, run, machine: {family: value}, sources, human: {family:
+  // value|null}}. Null when unchecked. The accuracy report reads these.
+  labelCheck: jsonb("label_check").$type(),
   // Review state, the reason this table exists:
   //   unreviewed | kept | culled   (culled = credits, cards, junk the human removed)
   // Reasons to look at this still before the rest (research/03 "review

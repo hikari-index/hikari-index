@@ -16,7 +16,7 @@ from typing import Optional
 from . import taxonomy
 from .palette_labels import from_descriptor
 from .proposal import (CandidateEvidence, build_proposal, coverage,
-                       shot_scale_lane)
+                       field_sources, shot_scale_lane)
 from .wd_labels import (DEFAULT_SCENE_THRESHOLD, from_predictions,
                         load as load_allowlist)
 
@@ -126,7 +126,8 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
         proposals.append({
             "candidate_id": evidence.candidate_id,
             "shot_id": evidence.shot_id,
-            "provenance": {"shot_scale_lane": shot_scale_lane(evidence)},
+            "provenance": {"shot_scale_lane": shot_scale_lane(evidence),
+                           "fields": field_sources(evidence)},
             "proposal": proposal,
         })
     return {

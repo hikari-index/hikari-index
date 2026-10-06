@@ -90,6 +90,76 @@ def shot_scale_lane(evidence: CandidateEvidence) -> str:
     return _shot_scale(evidence).lane
 
 
+NO_SOURCE = {"source": "none", "score": 0.0}
+
+
+def field_sources(evidence: CandidateEvidence) -> dict[str, dict]:
+    """Which signal answered each label field, and with what score.
+
+    Recorded beside the proposal, like the shot-scale lane, so review can be
+    scored per label, per source and per value (an accuracy figure over a
+    fusion says nothing about which signal to fix), and so a cut-off can be
+    re-tuned from reviewed frames. A field that abstained has source `none`.
+    Must agree with build_labels: the value a source is named for here is
+    the value the proposal carries.
+    """
+    wd = evidence.wd
+    palette = evidence.palette
+
+    def entry(source: str, score: float) -> dict:
+        return {"source": source, "score": round(float(score), 4)}
+
+    out: dict[str, dict] = {}
+    for name in ("setting", "time", "weather", "angle"):
+        if wd is None or wd.value(name) == "abstain":
+            out[name] = dict(NO_SOURCE)
+        elif name == "weather" and wd.value(name) == "none-visible":
+            # Inferred from a confident interior, not a weather tag.
+            out[name] = entry("interior-rule", wd.score(name))
+        else:
+            out[name] = entry("tagger", wd.score(name))
+
+    scale = _shot_scale(evidence)
+    out["shot_scale"] = (entry(scale.lane, scale.score)
+                         if scale.value != "abstain" else dict(NO_SOURCE))
+
+    # Without the tagger the card test cannot run, so composition abstains
+    # (build_labels via _tagger_fields).
+    composition = _composition(evidence) if wd is not None else None
+    out["composition"] = (entry(composition.basis, composition.score)
+                          if composition and composition.value != "abstain"
+                          else dict(NO_SOURCE))
+
+    people = fuse_people(wd, evidence.face_count)
+    if people.value == "abstain":
+        out["people"] = dict(NO_SOURCE)
+    elif evidence.face_count is None or people.tagger_value == people.value:
+        # The tagger's count stands (faces absent, or not above it).
+        both = (evidence.face_count is not None
+                and not people.evidence_inconsistent)
+        out["people"] = entry("tagger+faces" if both else "tagger", people.score)
+    else:
+        # The face count decided: the tagger abstained or counted fewer.
+        out["people"] = entry("faces", people.score)
+
+    lighting, color_bias = _lighting_and_bias(evidence)
+    if lighting == "abstain":
+        out["lighting"] = dict(NO_SOURCE)
+    elif wd is not None and wd.value("lighting") == lighting:
+        out["lighting"] = entry("tagger", wd.score("lighting"))
+    else:
+        out["lighting"] = entry("palette", palette.lighting_score)
+    if color_bias == "abstain":
+        out["color_bias"] = dict(NO_SOURCE)
+    elif wd is not None and color_bias == "monochrome" and wd.value("color_bias") == "monochrome":
+        out["color_bias"] = entry("tagger", wd.score("color_bias"))
+    else:
+        out["color_bias"] = entry("palette", palette.color_bias_score)
+    out["saturation"] = (entry("palette", palette.saturation_score)
+                         if palette.saturation != "abstain" else dict(NO_SOURCE))
+    return out
+
+
 def _tagger_fields(evidence: CandidateEvidence) -> dict:
     """Families the tagger can reach, abstaining where it said nothing.
 

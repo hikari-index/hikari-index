@@ -42,6 +42,7 @@ function fromRow(r) {
     source: r.source, selected: r.selected, facets: r.facets, tags: r.tags, tiers: r.tiers, palette: r.palette,
     facetsHuman: r.facets_human, tagsHuman: r.tags_human, reviewState: r.review_state, locked: r.locked,
     excluded: r.excluded, reviewNote: r.review_note, reviewReasons: r.review_reasons, repeatIn: r.repeat_in,
+    facetSources: r.facet_sources, labelCheck: r.label_check,
   };
 }
 
@@ -62,7 +63,7 @@ function toStill(row, admin = false) {
   if (!admin) return still; // the public payload carries no review or correction internals
   return {
     ...still,
-    machine: { facets: row.facets ?? {}, tags: row.tags ?? [] },
+    machine: { facets: row.facets ?? {}, tags: row.tags ?? [], sources: row.facetSources ?? {} },
     human: { facets: row.facetsHuman ?? {}, tags: row.tagsHuman ?? { add: [], remove: [] } },
     review: row.reviewState,
     reviewNote: row.reviewNote ?? null,
@@ -71,6 +72,8 @@ function toStill(row, admin = false) {
     reasons: row.reviewReasons ?? [],
     // The sibling works this frame repeats in (repeats.js); a mark only.
     repeatIn: row.repeatIn ?? [],
+    // The owner's "labels checked" snapshot (accuracy.js), or null.
+    labelCheck: row.labelCheck ?? null,
     // The tagger's rating reason, as a mark on the card.
     sensitive: (row.reviewReasons ?? []).some((r) => r.k === "rating"),
   };
@@ -602,6 +605,16 @@ export async function setCorrections(id, { facetsHuman, tagsHuman, note }) {
     .update(stillsTable)
     .set({ facetsHuman, tagsHuman, reviewNote: note ?? null, reviewedAt: sql`now()` })
     .where(eq(stillsTable.id, id));
+}
+
+// The "labels checked" mark (accuracy.js): a snapshot of what was judged,
+// or null to take the mark off.
+export async function workLabelsRun(workId) {
+  const [row] = await db().select({ labelsRun: worksTable.labelsRun }).from(worksTable).where(eq(worksTable.id, workId));
+  return row?.labelsRun ?? null;
+}
+export async function setLabelCheck(id, check) {
+  await db().update(stillsTable).set({ labelCheck: check }).where(eq(stillsTable.id, id));
 }
 
 // Every distinct value seen per family, machine or human, for the editor's

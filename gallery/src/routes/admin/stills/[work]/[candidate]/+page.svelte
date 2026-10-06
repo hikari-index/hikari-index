@@ -17,6 +17,20 @@
   const facetValue = (family, human) => v ? (v[`facet:${family}`] ?? "__proposed") : human === undefined ? "__proposed" : human === null ? "__none" : human;
   const tagOn = (t) => (v ? (v.tags ?? []).includes(t) : shownTags.includes(t));
   const st = $derived(v ? v.state : s.review);
+  // The "labels checked" mark holds only for the labels it was given on: a
+  // re-run that changed them leaves it unticked until checked again.
+  const sameLabels = (a, b) => {
+    const x = Object.entries(a ?? {}).filter(([, val]) => val);
+    const y = Object.entries(b ?? {}).filter(([, val]) => val);
+    return x.length === y.length && x.every(([k, val]) => (b ?? {})[k] === val);
+  };
+  const checkStale = $derived(!!s.labelCheck && !sameLabels(s.labelCheck.machine, s.machine.facets));
+  const labelsChecked = $derived(v ? v.labels_checked === "on" : !!s.labelCheck && !checkStale);
+  // Changing a label means it was looked at: tick the mark.
+  function labelEdited(e) {
+    const box = e.currentTarget.querySelector('input[name="labels_checked"]');
+    if (box && e.target !== box && String(e.target?.name ?? "").startsWith("facet:")) box.checked = true;
+  }
 
   // Unsaved edits are guarded on every way out: the arrow keys, the links,
   // the browser's own back and close. A submit clears the guard first.
@@ -90,7 +104,7 @@
     {#if form?.message}<p class="err" role="alert">{form.message}</p>{/if}
     {#if form?.saved}<p class="ok" role="status">Saved.</p>{/if}
 
-    <fieldset>
+    <fieldset onchange={labelEdited}>
       <legend>Labels</legend>
       <p class="meta">The model's proposal is shown beside each. "As proposed" keeps it; "none" clears it; anything else is your correction.</p>
       {#each Object.entries(data.choices) as [family, values] (family)}
@@ -109,6 +123,10 @@
           <input name={`facet:${family}:new`} value={v?.[`facet:${family}:new`] ?? ""} placeholder="or type a new value" aria-label={`new value for ${pretty(family)}`} />
         </label>
       {/each}
+      <label class="checked">
+        <input type="checkbox" name="labels_checked" checked={labelsChecked} />
+        <span>Labels checked: I looked at every label here. Those left as proposed count as right in the <a href="/admin/labels">label report</a>.{#if checkStale && !v}<br /><small>Checked earlier, before a re-run changed the labels. Tick it again once you have checked these.</small>{/if}</span>
+      </label>
     </fieldset>
 
     <fieldset>
@@ -225,6 +243,17 @@
   select,
   input {
     min-width: 0;
+  }
+  .checked {
+    display: flex;
+    gap: var(--s-2);
+    align-items: baseline;
+    margin-top: var(--s-1);
+    color: var(--text-2);
+    font-size: var(--t-meta);
+  }
+  .checked small {
+    color: var(--text-3);
   }
   .tags {
     display: flex;

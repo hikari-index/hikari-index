@@ -1,5 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
-import { facetChoices, setCorrections, setFlag, setReview, stillById, workMeta, workStills } from "$lib/server/catalog.js";
+import { facetChoices, setCorrections, setFlag, setLabelCheck, setReview, stillById, workLabelsRun, workMeta, workStills } from "$lib/server/catalog.js";
 
 // The still editor: fix a label the model got wrong, add or remove tags,
 // leave a note. Corrections sit beside the machine's values; "as proposed"
@@ -66,6 +66,20 @@ export const actions = {
       tagsHuman: tagsHuman.add.length || tagsHuman.remove.length ? tagsHuman : null,
       note,
     });
+    // "Labels checked": every label was looked at, so what was left as
+    // proposed is agreement. Saved as a snapshot of what was judged (the
+    // accuracy report); unticked, the mark comes off.
+    if (form.get("labels_checked") === "on") {
+      await setLabelCheck(id, {
+        at: new Date().toISOString(),
+        run: await workLabelsRun(still.workId),
+        machine: still.machine.facets,
+        sources: still.machine.sources,
+        human: facetsHuman,
+      });
+    } else if (still.labelCheck) {
+      await setLabelCheck(id, null);
+    }
     const state = String(form.get("state") ?? "");
     if (["kept", "culled", "unreviewed"].includes(state) && state !== still.review) await setReview(id, state, note);
     let lockRefused = false;

@@ -137,6 +137,32 @@ export function reviewReasons(tagRecord, proposal) {
   return out;
 }
 
+// What made a run's labels, as the proposals file records it (a missing
+// field is a run made before it was recorded).
+function labelsRunOf(doc) {
+  const first = doc.proposals?.[0]?.proposal ?? {};
+  return {
+    taxonomy: doc.taxonomy_version ?? null,
+    allowlist: doc.allowlist_version ?? null,
+    fusion: first.provider_version ?? null,
+    cuts: doc.configuration ?? null,
+  };
+}
+
+// Which signal proposed each facet, for the facets the run answered:
+// {family: {s: source, p: score}}. Null for a run from before fusion
+// recorded sources, except shot scale, whose lane was recorded first.
+function facetSourcesOf(rec, facets) {
+  const fields = rec?.provenance?.fields;
+  const out = {};
+  for (const name of Object.keys(facets)) {
+    const f = fields?.[name];
+    if (f && f.source && f.source !== "none") out[name] = { s: f.source, p: f.score ?? null };
+    else if (name === "shot_scale" && rec?.provenance?.shot_scale_lane) out[name] = { s: rec.provenance.shot_scale_lane, p: null };
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 const dig = (node, path) => {
   for (const k of path) node = node && typeof node === "object" ? node[k] : undefined;
   return typeof node === "string" ? node : null;
@@ -242,9 +268,12 @@ export async function importWork(workId) {
   const completed = join(extractDir, "results", "completed");
   const palettes = readPalettes([regenerated, existsSync(completed) ? join(onlyDir(completed), "artifacts") : null, join(analyzeDir, "surplus-colour", "artifacts")]);
   const proposals = new Map();
+  let labelsRun = null;
   for (const file of ["proposals.json", "surplus-proposals.json"]) {
     if (!existsSync(join(analyzeDir, file))) continue;
-    for (const p of readJson(join(analyzeDir, file)).proposals) proposals.set(p.candidate_id, p);
+    const doc = readJson(join(analyzeDir, file));
+    for (const p of doc.proposals) proposals.set(p.candidate_id, p);
+    labelsRun ??= labelsRunOf(doc);
   }
   // The tagger's raw record per frame (scores at the retention floor and
   // the segregated rating lane): evidence for the reasons, never a facet.
@@ -274,6 +303,7 @@ export async function importWork(workId) {
       shokoFileId: ident.file_id ?? null,
       bundleId: bundle.bundle_id ?? null,
       selection,
+      labelsRun,
     })
     .onConflictDoUpdate({
       target: works.id,
@@ -281,7 +311,7 @@ export async function importWork(workId) {
         title: sql`excluded.title`, entryType: sql`excluded.entry_type`, episode: sql`excluded.episode`,
         episodeTitle: sql`excluded.episode_title`, shokoSeriesId: sql`excluded.shoko_series_id`,
         shokoEpisodeIds: sql`excluded.shoko_episode_ids`, shokoFileId: sql`excluded.shoko_file_id`,
-        bundleId: sql`excluded.bundle_id`, selection: sql`excluded.selection`,
+        bundleId: sql`excluded.bundle_id`, selection: sql`excluded.selection`, labelsRun: sql`excluded.labels_run`,
         // This import's stills have not been matched for repeats yet.
         repeatsKey: sql`null`,
       },
@@ -312,7 +342,7 @@ export async function importWork(workId) {
       id: `${workId}/${cid}`, workId, candidateId: cid, shotId: t.shot ?? rec?.shot_id ?? null, tsSeconds: t.ts ?? null,
       source: entry.source ?? "published", selected: picked.has(cid), facets, tags, tiers,
       palette: palettes.get(cid) ?? null, embedding: vector, embeddingModel: vector ? model : null,
-      reviewReasons: reviewReasons(tagRecords.get(cid), rec),
+      reviewReasons: reviewReasons(tagRecords.get(cid), rec), facetSources: facetSourcesOf(rec, facets),
     };
     await db()
       .insert(stills)
@@ -326,6 +356,7 @@ export async function importWork(workId) {
           selected: sql`excluded.selected`, facets: sql`excluded.facets`, tags: sql`excluded.tags`,
           tiers: sql`excluded.tiers`, palette: sql`excluded.palette`, embedding: sql`excluded.embedding`,
           embeddingModel: sql`excluded.embedding_model`, reviewReasons: sql`excluded.review_reasons`,
+          facetSources: sql`excluded.facet_sources`,
         },
       });
     n += 1;
