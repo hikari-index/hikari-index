@@ -81,11 +81,16 @@ function toStill(row, admin = false) {
 }
 
 export const REASON_KINDS = ["text", "rating", "unsure", "scale"];
+// What Worth a look shows, and the Review page counts, unless asked for
+// more. An unsure shot scale is opt-in: the scenery tag and the head lane
+// score below the cut by design, so it marks a third or more of a work's
+// stills (measured 2026-10-06), most of them right.
+export const DEFAULT_REASON_KINDS = ["text", "rating", "unsure"];
 
 // The picked stills with a reason to look, grouped by work in library
 // order. kinds: which reasons count; all: reviewed ones too (the default
 // is the unreviewed, not hidden ones, the review-by-exception list).
-export async function exceptions({ kinds = REASON_KINDS, all = false } = {}) {
+export async function exceptions({ kinds = DEFAULT_REASON_KINDS, all = false } = {}) {
   const wanted = new Set(REASON_KINDS.filter((k) => kinds.includes(k)));
   const scope = all ? sql`true` : sql`s.review_state = 'unreviewed' and not s.excluded`;
   const every = (await db().execute(sql`select ${sql.raw(stillSelect("s"))} from stills s
@@ -111,8 +116,10 @@ export async function exceptions({ kinds = REASON_KINDS, all = false } = {}) {
 
 // How many unreviewed stills carry a reason (the Review page's link).
 export async function exceptionCount() {
+  const kinds = `{${DEFAULT_REASON_KINDS.join(",")}}`;
   const r = await db().execute(sql`select count(*)::int as n from stills s
-    where s.selected and s.review_state = 'unreviewed' and not s.excluded and jsonb_array_length(s.review_reasons) > 0`);
+    where s.selected and s.review_state = 'unreviewed' and not s.excluded
+      and exists (select 1 from jsonb_array_elements(s.review_reasons) x where x->>'k' = any(${kinds}::text[]))`);
   return r.rows[0]?.n ?? 0;
 }
 

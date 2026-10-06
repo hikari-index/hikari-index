@@ -1,15 +1,16 @@
 import { fail } from "@sveltejs/kit";
-import { exceptions, REASON_KINDS, setFlag, setReview } from "$lib/server/catalog.js";
+import { DEFAULT_REASON_KINDS, exceptions, REASON_KINDS, setFlag, setReview } from "$lib/server/catalog.js";
 import { reimportAll } from "$lib/server/jobs.js";
 
 // Review by exception (research/03 "Metadata review"): the picked stills
 // with a reason to look, instead of walking every sheet. ?k=text,rating
-// narrows to those reasons; ?all=1 includes reviewed stills.
+// picks those reasons (without it, the default ones; an unsure shot scale
+// only when asked for); ?all=1 includes reviewed stills.
 export async function load({ url }) {
   const k = url.searchParams.get("k");
-  const kinds = k ? k.split(",").filter((x) => REASON_KINDS.includes(x)) : REASON_KINDS;
+  const kinds = k ? k.split(",").filter((x) => REASON_KINDS.includes(x)) : DEFAULT_REASON_KINDS;
   const all = url.searchParams.get("all") === "1";
-  return { kinds, all, ...(await exceptions({ kinds, all })) };
+  return { kinds, defaultKinds: DEFAULT_REASON_KINDS, all, ...(await exceptions({ kinds, all })) };
 }
 
 const REVIEW_STATES = new Set(["kept", "culled", "unreviewed"]);
