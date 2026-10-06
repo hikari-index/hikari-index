@@ -601,17 +601,15 @@ export async function visibleStillById(id) {
 // Owner corrections. facetsHuman: {family: value|null}; tagsHuman: {add, remove}.
 // reviewed_at records the last time a person touched the still, so a bulk
 // keep's undo leaves a still edited since alone.
-export async function setCorrections(id, { facetsHuman, tagsHuman, note }) {
-  await db()
-    .update(stillsTable)
-    .set({ facetsHuman, tagsHuman, reviewNote: note ?? null, reviewedAt: sql`now()` })
-    .where(eq(stillsTable.id, id));
-}
-
-// The "labels checked" mark (accuracy.js): a snapshot of what was judged,
-// or null to take the mark off.
-export async function setLabelCheck(id, check) {
-  await db().update(stillsTable).set({ labelCheck: check }).where(eq(stillsTable.id, id));
+// labelCheck (accuracy.js): a snapshot to set, null to clear, undefined to
+// leave as it is; written in the same update so a re-import that runs
+// between two writes cannot drop the still with half of them. Returns
+// whether the still was still there.
+export async function setCorrections(id, { facetsHuman, tagsHuman, note, labelCheck }) {
+  const set = { facetsHuman, tagsHuman, reviewNote: note ?? null, reviewedAt: sql`now()` };
+  if (labelCheck !== undefined) set.labelCheck = labelCheck;
+  const rows = await db().update(stillsTable).set(set).where(eq(stillsTable.id, id)).returning({ id: stillsTable.id });
+  return rows.length > 0;
 }
 
 // Every distinct value seen per family, machine or human, for the editor's

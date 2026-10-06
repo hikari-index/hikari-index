@@ -130,6 +130,10 @@
             {#each values as val (val)}
               <option value={val} selected={chosen === val}>{pretty(val)}</option>
             {/each}
+            {#if !chosen.startsWith("__") && !values.includes(chosen)}
+              <!-- a value no stored still carries any more (a refused save after a re-run) -->
+              <option value={chosen} selected>{pretty(chosen)}</option>
+            {/if}
           </select>
           <input name={`facet:${family}:new`} value={v?.[`facet:${family}:new`] ?? ""} placeholder="or type a new value" aria-label={`new value for ${pretty(family)}`} />
         </label>
