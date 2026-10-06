@@ -22,7 +22,7 @@ from . import taxonomy
 from .palette_labels import PaletteLabels
 from .people_labels import fuse as fuse_people
 from .composition_labels import resolve as resolve_composition
-from .shot_scale import resolve as resolve_scale
+from .shot_scale import NEIGHBOR, head_opinion, resolve as resolve_scale
 from .wd_labels import WdLabels
 
 PROVIDER_VERSION = "0.1.0"
@@ -129,6 +129,13 @@ def field_sources(evidence: CandidateEvidence) -> dict[str, dict]:
     scale = _shot_scale(evidence)
     out["shot_scale"] = (entry(scale.lane, scale.score)
                          if scale.value != "abstain" else dict(NO_SOURCE))
+    # A second opinion from the head where the tagger or the face answered:
+    # where the two disagree, the gallery marks the scale unsure.
+    if scale.lane in ("tagger", "face-occupancy"):
+        second = head_opinion(evidence.faces, evidence.heads)
+        if second:
+            out["shot_scale"]["head"] = second
+            out["shot_scale"]["agrees"] = NEIGHBOR.get(scale.value, scale.value) == second
 
     # Without the tagger the card test cannot run, so composition abstains
     # (build_labels via _tagger_fields).

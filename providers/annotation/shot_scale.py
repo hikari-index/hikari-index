@@ -183,6 +183,34 @@ def from_scenery(scenery_tagged: bool) -> ShotScale:
                      score=SCENERY_SCORE, lane="scenery")
 
 
+def head_opinion(faces, heads) -> Optional[str]:
+    """What the head lane would say about a frame another lane answered: the
+    head that covers the largest face's center, else the largest head (heads
+    come largest first). None when there is no head. A second opinion only,
+    recorded beside the answer: it never changes it. Measured on the gold
+    set's July review: where the face lane answered, it was wrong on 6 of 51
+    frames whose head agreed and 3 of 11 whose head disagreed; the two
+    disagree on about one answered frame in eight."""
+    if not heads:
+        return None
+    chosen = None
+    if faces:
+        box = faces[0].get("box") or []
+        if len(box) == 4:
+            x, y = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+            covering = [h for h in heads
+                        if h["box"][0] <= x <= h["box"][2] and h["box"][1] <= y <= h["box"][3]]
+            chosen = max(covering, key=lambda h: h.get("score", 0.0), default=None)
+    chosen = chosen or heads[0]
+    fraction = chosen.get("height_fraction")
+    return from_head_height(fraction).value if fraction else None
+
+
+#: The head lane names no extreme class; an extreme answer is compared with
+#: its neighbor.
+NEIGHBOR = {"extreme-close-up": "close-up", "extreme-wide": "wide"}
+
+
 def resolve(
     tagger_value: str,
     tagger_score: float,

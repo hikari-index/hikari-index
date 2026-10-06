@@ -113,3 +113,28 @@ def test_nms_matches_imgutils_plus_one_arithmetic():
     # second box at the heads' 0.7.
     boxes = np.array([[0, 0, 10, 10], [1.8, 0, 12, 10]], dtype=np.float32)
     assert _nms(boxes, np.array([0.9, 0.8], dtype=np.float32), 0.7) == [0]
+
+
+def test_the_head_gives_a_second_opinion_where_the_face_answered():
+    from annotation.shot_scale import head_opinion
+    face = ({"box": [900, 100, 1020, 260]},)
+    covering = {"box": [880, 80, 1040, 300], "score": 0.9, "height_fraction": 0.20}
+    bigger_elsewhere = {"box": [0, 0, 600, 1000], "score": 0.8, "height_fraction": 0.93}
+    # the head over the face is the one compared, not the largest
+    assert head_opinion(face, (bigger_elsewhere, covering)) == "medium"
+    assert head_opinion((), (bigger_elsewhere, covering)) == "close-up"
+    assert head_opinion(face, ()) is None
+
+
+def test_disagreement_is_recorded_beside_the_answer_and_changes_nothing():
+    base = dict(candidate_id="cand-0001", shot_id="shot-001", palette=from_descriptor(None),
+                wd=from_predictions({"1girl": 0.9}, ALLOWLIST), face_count=1,
+                face_fraction=0.05, faces=({"box": [900, 100, 1020, 260]},), frame_width=1920)
+    agreeing = CandidateEvidence(**base, heads=({"box": [880, 80, 1040, 400], "score": 0.9, "height_fraction": 0.30},))
+    disagreeing = CandidateEvidence(**base, heads=({"box": [880, 80, 1040, 1000], "score": 0.9, "height_fraction": 0.85},))
+    assert build_labels(agreeing)["shot_scale"] == build_labels(disagreeing)["shot_scale"] == "medium"
+    a, d = field_sources(agreeing)["shot_scale"], field_sources(disagreeing)["shot_scale"]
+    assert (a["source"], a["head"], a["agrees"]) == ("face-occupancy", "medium", True)
+    assert (d["head"], d["agrees"]) == ("close-up", False)
+    # no head, no opinion
+    assert "agrees" not in field_sources(CandidateEvidence(**base))["shot_scale"]
