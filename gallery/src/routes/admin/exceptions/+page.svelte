@@ -56,7 +56,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Everything else was proposed with the confidence the review calibration accepted nine times in ten. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag or from the size of a head, a third or more of a work's stills, most of them right.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Everything else was proposed with the confidence the review calibration accepted nine times in ten. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag or from the size of a head, often a quarter to a half of a work's stills, most of them right.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">
