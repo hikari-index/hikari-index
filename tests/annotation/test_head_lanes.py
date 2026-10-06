@@ -113,3 +113,13 @@ def test_nms_matches_imgutils_plus_one_arithmetic():
     # second box at the heads' 0.7.
     boxes = np.array([[0, 0, 10, 10], [1.8, 0, 12, 10]], dtype=np.float32)
     assert _nms(boxes, np.array([0.9, 0.8], dtype=np.float32), 0.7) == [0]
+
+
+def test_box_edges_round_like_imgutils():
+    """float32 arithmetic as in imgutils' _xy_postprocess: an edge at
+    300.8333435 on the 640 input lands on 902 of 1920, not 903."""
+    session = _FakeSession([
+        [300.8333435058594 + 30.0], [300.0], [60.0], [60.0], [0.9],
+    ])
+    found = detect(session, Image.new("RGB", (1920, 1080)), score_cut=0.4, iou=0.5)
+    assert found[0]["box"][0] == 902

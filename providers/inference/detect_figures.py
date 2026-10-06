@@ -34,7 +34,9 @@ from .tag_bundle import _inputs
 
 MODELS = Path("/opt/hikari/models/deepghs")
 PIN_PATH = MODELS / "PIN.json"
-PROVIDER_VERSION = "0.1.0"
+# 0.2.0: imgutils' default preprocessing (640x640 stretch, bicubic), its
+# NMS and box rounding; 0.1.0 kept the aspect and used bilinear.
+PROVIDER_VERSION = "0.2.0"
 
 # The model cards' F1-optimal score cuts. Boxes below them are dropped.
 HEAD_SCORE = 0.413
@@ -49,22 +51,36 @@ PERSON_IOU = 0.5
 INPUT_SIDE = 640
 
 
-def _threads() -> int:
-    """CPUs this process may use: a container's CPU limit (cgroup v2
-    cpu.max), else the CPUs it may run on. onnxruntime otherwise starts one
-    thread per host core; measured 2026-10-06 under a 4-CPU limit on a
-    24-core host, that ran 205 ms a frame against 57 ms with 4 threads."""
-    import os
+def _cgroup_quota() -> Optional[int]:
+    """A container's CPU limit in whole CPUs, or None: cgroup v2 cpu.max,
+    else cgroup v1 cpu.cfs_quota_us / cpu.cfs_period_us."""
     try:
         quota, period = Path("/sys/fs/cgroup/cpu.max").read_text().split()[:2]
-        if quota != "max":
-            return max(1, int(int(quota) / int(period)))
+        return None if quota == "max" else max(1, int(int(quota) / int(period)))
     except (OSError, ValueError):
         pass
+    for folder in ("/sys/fs/cgroup/cpu", "/sys/fs/cgroup/cpu,cpuacct"):
+        try:
+            quota = int(Path(folder, "cpu.cfs_quota_us").read_text())
+            period = int(Path(folder, "cpu.cfs_period_us").read_text())
+        except (OSError, ValueError):
+            continue
+        return None if quota <= 0 or period <= 0 else max(1, int(quota / period))
+    return None
+
+
+def _threads() -> int:
+    """CPUs this process may use: the CPUs it may run on, capped by a
+    container's CPU limit. onnxruntime otherwise starts one thread per host
+    core; measured 2026-10-06 under a 4-CPU limit on a 24-core host, that
+    ran 205 ms a frame against 57 ms with 4 threads."""
+    import os
     try:
-        return max(1, len(os.sched_getaffinity(0)))
+        allowed = len(os.sched_getaffinity(0))
     except AttributeError:
-        return max(1, os.cpu_count() or 1)
+        allowed = os.cpu_count() or 1
+    quota = _cgroup_quota()
+    return max(1, min(allowed, quota) if quota else allowed)
 
 
 def _session(path: Path):
@@ -123,15 +139,16 @@ def detect(session, image, score_cut: float, iou: float, prepared=None) -> list[
     if not scores.size:
         return []
     boxes = np.stack([cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2], axis=1)
-    sx, sy = width / INPUT_SIDE, height / INPUT_SIDE
-
-    def px(value, scale, limit):
-        return int(round(min(max(float(value) * scale, 0.0), float(limit))))
+    def px(value, limit):
+        # imgutils' _xy_postprocess, same order and dtype: the float32 value
+        # divided by the input side, times the frame side, clipped, rounded
+        # half to even. Doing it in float64 moves an edge at .5 by a pixel.
+        return int(np.clip(value / INPUT_SIDE * limit, a_min=0, a_max=limit).round())
 
     found = []
     for i in _nms(boxes, scores, iou):
-        x0, y0 = px(boxes[i, 0], sx, width), px(boxes[i, 1], sy, height)
-        x1, y1 = px(boxes[i, 2], sx, width), px(boxes[i, 3], sy, height)
+        x0, y0 = px(boxes[i, 0], width), px(boxes[i, 1], height)
+        x1, y1 = px(boxes[i, 2], width), px(boxes[i, 3], height)
         found.append({
             "score": round(float(scores[i]), 6),
             "box": [x0, y0, x1, y1],
@@ -190,6 +207,11 @@ def run_detection(bundle_dir: Optional[Path], out_dir: Path,
             "ms_per_frame": round(1000 * elapsed / max(1, len(results)), 1),
         },
         "score_cuts": {"head": HEAD_SCORE, "person": PERSON_SCORE},
+        "settings": {
+            "input": f"{INPUT_SIDE}x{INPUT_SIDE} stretch, Pillow bicubic, 0..1",
+            "nms_iou": {"head": HEAD_IOU, "person": PERSON_IOU},
+            "boxes": "imgutils _xy_postprocess (float32, clipped, round half to even)",
+        },
         **source,
         "identity_inference": "none; boxes and geometry only",
         "candidates": results,
