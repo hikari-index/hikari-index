@@ -21,7 +21,8 @@
     if (r.k === "text") return `text: ${r.tags.map((t) => t.replaceAll("_", " ")).join(", ")}`;
     if (r.k === "rating") return `rating: questionable or explicit at ${r.score}`;
     if (r.k === "unsure") return `unsure scene label: ${r.label.replaceAll("-", " ")} at ${r.score}`;
-    if (r.k === "scale") return `unsure shot scale: ${r.label.replaceAll("-", " ")} at ${r.score}${FROM[r.source] ? `, from ${FROM[r.source]}` : ""}${r.head ? `; the head says ${r.head.replaceAll("-", " ")}` : ""}`;
+    if (r.k === "scale" && r.head) return `unsure shot scale: ${r.label.replaceAll("-", " ")} from the size of a face, but the size of the head says ${r.head.replaceAll("-", " ")}`;
+    if (r.k === "scale") return `unsure shot scale: ${r.label.replaceAll("-", " ")} at ${r.score}${FROM[r.source] ? `, from ${FROM[r.source]}` : ""}`;
     return r.k;
   }
   function marks(s) {
@@ -56,7 +57,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Everything else was proposed with the confidence the review calibration accepted nine times in ten. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag or from the size of a head, or where the face and the head disagree; often a quarter to a half of a work's stills, most of them right.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Everything else was proposed with the confidence the review calibration accepted nine times in ten. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag or from the size of a head, or where the size of a face and of its head disagree; often a quarter to a half of a work's stills, most of them right.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">

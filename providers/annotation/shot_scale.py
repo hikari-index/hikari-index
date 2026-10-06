@@ -184,25 +184,24 @@ def from_scenery(scenery_tagged: bool) -> ShotScale:
 
 
 def head_opinion(faces, heads) -> Optional[str]:
-    """What the head lane would say about a frame another lane answered: the
-    head that covers the largest face's center, else the largest head (heads
-    come largest first). None when there is no head. A second opinion only,
-    recorded beside the answer: it never changes it. Measured on the gold
-    set's July review: where the face lane answered, it was wrong on 6 of 51
-    frames whose head agreed and 3 of 11 whose head disagreed; the two
-    disagree on about one answered frame in eight."""
-    if not heads:
+    """What the head lane says about a frame the face lane answered, from the
+    head that covers the largest face's center (the same person; the head
+    cuts were calibrated on exactly those pairs). None when no head covers
+    it. A second opinion only, recorded beside the answer: it never changes
+    it. A weak signal, measured on the gold set's July review: where the
+    face lane answered, it was wrong on 6 of 50 frames whose head agreed
+    and 2 of 10 whose head disagreed; the two disagree on 80 of 648
+    face-lane answers (12%)."""
+    if not heads or not faces:
         return None
-    chosen = None
-    if faces:
-        box = faces[0].get("box") or []
-        if len(box) == 4:
-            x, y = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
-            covering = [h for h in heads
-                        if h["box"][0] <= x <= h["box"][2] and h["box"][1] <= y <= h["box"][3]]
-            chosen = max(covering, key=lambda h: h.get("score", 0.0), default=None)
-    chosen = chosen or heads[0]
-    fraction = chosen.get("height_fraction")
+    box = faces[0].get("box") or []
+    if len(box) != 4:
+        return None
+    x, y = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+    covering = [h for h in heads
+                if h["box"][0] <= x <= h["box"][2] and h["box"][1] <= y <= h["box"][3]]
+    chosen = max(covering, key=lambda h: h.get("score", 0.0), default=None)
+    fraction = chosen.get("height_fraction") if chosen else None
     return from_head_height(fraction).value if fraction else None
 
 

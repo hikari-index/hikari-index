@@ -122,7 +122,9 @@ def test_the_head_gives_a_second_opinion_where_the_face_answered():
     bigger_elsewhere = {"box": [0, 0, 600, 1000], "score": 0.8, "height_fraction": 0.93}
     # the head over the face is the one compared, not the largest
     assert head_opinion(face, (bigger_elsewhere, covering)) == "medium"
-    assert head_opinion((), (bigger_elsewhere, covering)) == "close-up"
+    # no face, or no head over it: someone else's head is no opinion
+    assert head_opinion((), (bigger_elsewhere, covering)) is None
+    assert head_opinion(face, (bigger_elsewhere,)) is None
     assert head_opinion(face, ()) is None
 
 

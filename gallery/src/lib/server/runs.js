@@ -139,10 +139,10 @@ export function reviewReasons(tagRecord, proposal) {
   // or leave it out apart from the scene labels: on the gold set it would
   // flag about a quarter of stills, most of them from the scenery tag,
   // which review accepted 54 times in 59.
-  // Also unsure: a scale the tagger or the face gave where the head, a
-  // second opinion recorded beside it, says otherwise (about one answered
-  // still in eight on the gold set; the face lane was wrong on 27% of
-  // those against 12% where they agreed).
+  // Also unsure: a scale the face gave where the same person's head, a
+  // second opinion recorded beside it, says otherwise (12% of face-lane
+  // answers on the gold set; a weak signal: the face lane was wrong on 2
+  // of 10 reviewed disagreements against 6 of 50 agreements).
   const scale = (proposal?.proposal?.scores || []).find((s) => s.family === "shot-scale");
   const field = proposal?.provenance?.fields?.shot_scale;
   const disagrees = field?.agrees === false;

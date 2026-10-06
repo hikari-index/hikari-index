@@ -129,9 +129,10 @@ def field_sources(evidence: CandidateEvidence) -> dict[str, dict]:
     scale = _shot_scale(evidence)
     out["shot_scale"] = (entry(scale.lane, scale.score)
                          if scale.value != "abstain" else dict(NO_SOURCE))
-    # A second opinion from the head where the tagger or the face answered:
-    # where the two disagree, the gallery marks the scale unsure.
-    if scale.lane in ("tagger", "face-occupancy"):
+    # A second opinion from the same person's head where the face answered:
+    # where the two disagree, the gallery marks the scale unsure. Not for
+    # the tagger lane: nothing was measured there.
+    if scale.lane == "face-occupancy":
         second = head_opinion(evidence.faces, evidence.heads)
         if second:
             out["shot_scale"]["head"] = second
