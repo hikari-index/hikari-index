@@ -55,10 +55,6 @@ RUN npm ci --omit=dev --no-audit --no-fund
 FROM ${NODE_IMAGE}
 ARG HIKARI_UID=10001
 ARG HIKARI_GID=10001
-# The image's own tag, passed at build (--build-arg HIKARI_GALLERY_VERSION=<tag>).
-ARG HIKARI_GALLERY_VERSION
-RUN test -n "$HIKARI_GALLERY_VERSION" || { echo 'pass --build-arg HIKARI_GALLERY_VERSION=<tag>' >&2; exit 1; }
-ENV HIKARI_GALLERY_VERSION=${HIKARI_GALLERY_VERSION}
 ARG HIKARI_READ_ONLY_BUILD=""
 ENV HIKARI_READ_ONLY=${HIKARI_READ_ONLY_BUILD:+1}
 ENV NODE_ENV=production \
@@ -77,6 +73,12 @@ COPY --chown=hikari:hikari migrations ./migrations
 # first-run.js makes a new install's secrets (compose.yaml, README).
 COPY --chown=hikari:hikari scripts/first-run.js ./scripts/first-run.js
 USER hikari
+# The image's own tag, passed at build (--build-arg HIKARI_GALLERY_VERSION=<tag>).
+# Last, so a new version changes no layer above it and an update downloads
+# only what changed.
+ARG HIKARI_GALLERY_VERSION
+RUN test -n "$HIKARI_GALLERY_VERSION" || { echo 'pass --build-arg HIKARI_GALLERY_VERSION=<tag>' >&2; exit 1; }
+ENV HIKARI_GALLERY_VERSION=${HIKARI_GALLERY_VERSION}
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
     CMD ["node", "-e", "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/series').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
