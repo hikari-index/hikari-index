@@ -48,10 +48,29 @@ PERSON_IOU = 0.5
 INPUT_SIDE = 640
 
 
+def _threads() -> int:
+    """CPUs this process may use: a container's CPU limit (cgroup v2
+    cpu.max), else the CPUs it may run on. onnxruntime otherwise starts one
+    thread per host core; measured 2026-10-06 under a 4-CPU limit on a
+    24-core host, that ran 205 ms a frame against 57 ms with 4 threads."""
+    import os
+    try:
+        quota, period = Path("/sys/fs/cgroup/cpu.max").read_text().split()[:2]
+        if quota != "max":
+            return max(1, int(int(quota) / int(period)))
+    except (OSError, ValueError):
+        pass
+    try:
+        return max(1, len(os.sched_getaffinity(0)))
+    except AttributeError:
+        return max(1, os.cpu_count() or 1)
+
+
 def _session(path: Path):
     import onnxruntime as ort
     options = ort.SessionOptions()
     options.inter_op_num_threads = 1
+    options.intra_op_num_threads = _threads()
     return ort.InferenceSession(str(path), options, providers=["CPUExecutionProvider"])
 
 
@@ -155,6 +174,7 @@ def run_detection(bundle_dir: Optional[Path], out_dir: Path,
         "model_pin": pin,
         "runtime": {
             "device": "cpu",
+            "threads": _threads(),
             "elapsed_seconds": round(elapsed, 3),
             "candidates": len(results),
             "ms_per_frame": round(1000 * elapsed / max(1, len(results)), 1),
