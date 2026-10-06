@@ -1,5 +1,5 @@
 {
-  "id": "b917270b-0745-4b92-831c-c598b437f4f7",
+  "id": "33ae3415-b48a-4939-a1bb-b308dd1f6bf2",
   "prevId": "c8ef063e-0c0f-463f-8b45-f8fa556a3bd4",
   "version": "7",
   "dialect": "postgresql",
@@ -446,6 +446,12 @@
         },
         "facet_sources": {
           "name": "facet_sources",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "labels_run": {
+          "name": "labels_run",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false

@@ -8,6 +8,7 @@ import { and, asc, cosineDistance, eq, getTableColumns, isNotNull, sql } from "d
 import { db, schema } from "$lib/server/db/index.js";
 import { shownEpisodeTitle } from "$lib/titles.js";
 import { cullableRepeats } from "./repeats.js";
+import { REPORT_FAMILIES } from "./accuracy.js";
 
 const { works: worksTable, stills: stillsTable, franchises: franchisesTable, seasons: seasonsTable } = schema;
 
@@ -42,7 +43,7 @@ function fromRow(r) {
     source: r.source, selected: r.selected, facets: r.facets, tags: r.tags, tiers: r.tiers, palette: r.palette,
     facetsHuman: r.facets_human, tagsHuman: r.tags_human, reviewState: r.review_state, locked: r.locked,
     excluded: r.excluded, reviewNote: r.review_note, reviewReasons: r.review_reasons, repeatIn: r.repeat_in,
-    facetSources: r.facet_sources, labelCheck: r.label_check,
+    facetSources: r.facet_sources, labelsRun: r.labels_run, labelCheck: r.label_check,
   };
 }
 
@@ -63,7 +64,7 @@ function toStill(row, admin = false) {
   if (!admin) return still; // the public payload carries no review or correction internals
   return {
     ...still,
-    machine: { facets: row.facets ?? {}, tags: row.tags ?? [], sources: row.facetSources ?? {} },
+    machine: { facets: row.facets ?? {}, tags: row.tags ?? [], sources: row.facetSources ?? {}, run: row.labelsRun ?? null },
     human: { facets: row.facetsHuman ?? {}, tags: row.tagsHuman ?? { add: [], remove: [] } },
     review: row.reviewState,
     reviewNote: row.reviewNote ?? null,
@@ -609,10 +610,6 @@ export async function setCorrections(id, { facetsHuman, tagsHuman, note }) {
 
 // The "labels checked" mark (accuracy.js): a snapshot of what was judged,
 // or null to take the mark off.
-export async function workLabelsRun(workId) {
-  const [row] = await db().select({ labelsRun: worksTable.labelsRun }).from(worksTable).where(eq(worksTable.id, workId));
-  return row?.labelsRun ?? null;
-}
 export async function setLabelCheck(id, check) {
   await db().update(stillsTable).set({ labelCheck: check }).where(eq(stillsTable.id, id));
 }
@@ -629,7 +626,10 @@ export async function facetChoices() {
     ) x where value is not null and value <> '' order by key, value`);
   const values = {};
   for (const row of r.rows) (values[row.key] ??= []).push(row.value);
-  return values;
+  // Every label the report scores gets a control, even one no still has a
+  // value for yet, so a checked still can record a label the machine missed.
+  for (const family of REPORT_FAMILIES) values[family] ??= [];
+  return Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 // The Review page's tree: the Library's grouping (franchise -> season ->

@@ -1,5 +1,5 @@
 import { error, fail, redirect } from "@sveltejs/kit";
-import { facetChoices, setCorrections, setFlag, setLabelCheck, setReview, stillById, workLabelsRun, workMeta, workStills } from "$lib/server/catalog.js";
+import { facetChoices, setCorrections, setFlag, setLabelCheck, setReview, stillById, workMeta, workStills } from "$lib/server/catalog.js";
 
 // The still editor: fix a label the model got wrong, add or remove tags,
 // leave a note. Corrections sit beside the machine's values; "as proposed"
@@ -66,7 +66,8 @@ export const actions = {
     const checked = form.get("labels_checked") === "on";
     const seen = JSON.stringify(Object.entries(still.machine.facets).sort());
     if (checked && String(form.get("labels_seen") ?? "") !== seen) {
-      return fail(409, { message: "The machine's labels changed since this page was opened (the work was re-run). Nothing was saved; look at the labels again.", values: values() });
+      // The tick comes back off: it was given on labels no longer shown.
+      return fail(409, { message: "The machine's labels changed since this page was opened (the work was re-run). Nothing was saved. Look at the labels again, then tick \"Labels checked\" and save.", values: { ...values(), labels_checked: "" } });
     }
     await setCorrections(id, {
       facetsHuman: Object.keys(facetsHuman).length ? facetsHuman : null,
@@ -79,7 +80,7 @@ export const actions = {
     if (checked) {
       await setLabelCheck(id, {
         at: new Date().toISOString(),
-        run: await workLabelsRun(still.workId),
+        run: still.machine.run,
         machine: still.machine.facets,
         sources: still.machine.sources,
         human: facetsHuman,

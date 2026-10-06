@@ -342,7 +342,7 @@ export async function importWork(workId) {
       id: `${workId}/${cid}`, workId, candidateId: cid, shotId: t.shot ?? rec?.shot_id ?? null, tsSeconds: t.ts ?? null,
       source: entry.source ?? "published", selected: picked.has(cid), facets, tags, tiers,
       palette: palettes.get(cid) ?? null, embedding: vector, embeddingModel: vector ? model : null,
-      reviewReasons: reviewReasons(tagRecords.get(cid), rec), facetSources: facetSourcesOf(rec, facets),
+      reviewReasons: reviewReasons(tagRecords.get(cid), rec), facetSources: facetSourcesOf(rec, facets), labelsRun,
     };
     await db()
       .insert(stills)
@@ -356,21 +356,22 @@ export async function importWork(workId) {
           selected: sql`excluded.selected`, facets: sql`excluded.facets`, tags: sql`excluded.tags`,
           tiers: sql`excluded.tiers`, palette: sql`excluded.palette`, embedding: sql`excluded.embedding`,
           embeddingModel: sql`excluded.embedding_model`, reviewReasons: sql`excluded.review_reasons`,
-          facetSources: sql`excluded.facet_sources`,
+          facetSources: sql`excluded.facet_sources`, labelsRun: sql`excluded.labels_run`,
         },
       });
     n += 1;
   }
   // A re-run at another still count leaves stills the new set no longer
   // has, and derive has already replaced the work's images whole. One nobody
-  // reviewed goes; one with a review mark, lock, exclusion or correction
+  // reviewed goes; one with a review mark, lock, exclusion, correction or
+  // label check
   // stays as not picked (public pages show picked stills only), so no
   // decision is lost.
   const keep = ladder.candidates.map((c) => c.candidate_id);
   const dropped = await db().execute(sql`delete from stills
     where work_id = ${workId} and not (candidate_id = any(${`{${keep.join(",")}}`}::text[]))
       and review_state = 'unreviewed' and not locked and not excluded
-      and facets_human is null and tags_human is null
+      and facets_human is null and tags_human is null and label_check is null
     returning id`);
   // Derive replaced the work's image folder with the new set's, so a
   // dropped still's web images are gone: its tiers go with them (an empty

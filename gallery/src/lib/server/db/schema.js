@@ -116,6 +116,9 @@ export const stills = pgTable("stills", {
   // {family: {s: "face-occupancy", p: 0.42}}. Null for runs made before
   // fusion recorded it.
   facetSources: jsonb("facet_sources").$type(),
+  // The work's labels_run as of the import that wrote these facets, kept
+  // on the still so a label check always pairs labels with what made them.
+  labelsRun: jsonb("labels_run").$type(),
   // The owner's "labels checked" mark: every label of the still was looked
   // at, so what was left as proposed counts as agreement. A snapshot taken
   // at that save, so a later re-import or edit does not change what was
