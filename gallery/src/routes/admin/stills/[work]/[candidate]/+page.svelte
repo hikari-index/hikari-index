@@ -35,17 +35,17 @@
   // Which machine labels this page shows; a checked save is refused if a
   // re-run changed them since (the mark would certify labels never seen).
   const labelsSeen = $derived(JSON.stringify(Object.entries(s.machine.facets).sort()));
+
+  // Unsaved edits are guarded on every way out: the arrow keys, the links,
+  // the browser's own back and close. A submit clears the guard first.
+  let dirty = $state(false);
+  let leaving = $state(false);
   // Moving to another still reuses this page: start its guard afresh.
   $effect.pre(() => {
     s.id;
     dirty = false;
     leaving = false;
   });
-
-  // Unsaved edits are guarded on every way out: the arrow keys, the links,
-  // the browser's own back and close. A submit clears the guard first.
-  let dirty = $state(false);
-  let leaving = $state(false);
   beforeNavigate(({ cancel }) => {
     if (dirty && !leaving && !confirm("You have unsaved label changes here. Leave without saving?")) cancel();
   });
