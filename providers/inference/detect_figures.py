@@ -15,8 +15,9 @@ the weights' own metadata names, which this AGPL-3.0 project can carry):
 deepghs/anime_head_detection head_detect_v2.0_s and
 deepghs/anime_person_detection person_detect_v1.3_s, ONNX, pinned by commit
 and checked by sha256 in the image build. Run with onnxruntime on CPU on
-every analyze image: about 50 ms a frame each, so a GPU path is not worth a
-second runtime.
+every analyze image: measured in the CPU image on 4 CPUs, about 60 ms a frame
+per model (plus reading the frame, which every provider pays), less than the
+tagger or the face detector take, so a GPU path is not worth a second runtime.
 """
 
 from __future__ import annotations
@@ -95,17 +96,25 @@ def _nms(boxes, scores, iou):
     return keep
 
 
-def detect(session, image, score_cut: float, iou: float) -> list[dict]:
-    """One YOLOv8 pass the way imgutils runs these models by default: the
-    frame stretched to 640x640 with Pillow's bicubic resize, scores above
-    the cut, NMS, boxes mapped back to the frame's pixels, rounded and
-    clipped to it."""
+def prepare(image):
+    """The model input imgutils makes by default: the frame stretched to
+    640x640 with Pillow's bicubic resize, scaled to 0..1, NCHW. Both models
+    take the same input, so it is made once per frame."""
     import numpy as np
     from PIL import Image
-    width, height = image.size
     x = np.asarray(image.resize((INPUT_SIDE, INPUT_SIDE), Image.Resampling.BICUBIC),
                    dtype=np.float32) / 255.0
-    out = session.run(None, {session.get_inputs()[0].name: x.transpose(2, 0, 1)[None]})[0][0]
+    return x.transpose(2, 0, 1)[None]
+
+
+def detect(session, image, score_cut: float, iou: float, prepared=None) -> list[dict]:
+    """One YOLOv8 pass as imgutils runs these models by default: the input
+    from prepare(), scores above the cut, NMS, boxes mapped back to the
+    frame's pixels, rounded and clipped to it."""
+    import numpy as np
+    width, height = image.size
+    x = prepare(image) if prepared is None else prepared
+    out = session.run(None, {session.get_inputs()[0].name: x})[0][0]
     if out.shape[0] != 5:  # one class: rows are cx, cy, w, h, score
         out = out.T
     keep = out[4] > score_cut
@@ -149,8 +158,9 @@ def run_detection(bundle_dir: Optional[Path], out_dir: Path,
     for candidate in items:
         with Image.open(candidate["path"]) as raw:
             image = raw.convert("RGB")
-        heads = detect(heads_model, image, HEAD_SCORE, HEAD_IOU)
-        persons = detect(persons_model, image, PERSON_SCORE, PERSON_IOU)
+        x = prepare(image)
+        heads = detect(heads_model, image, HEAD_SCORE, HEAD_IOU, x)
+        persons = detect(persons_model, image, PERSON_SCORE, PERSON_IOU, x)
         results.append({
             "candidate_id": candidate["candidate_id"],
             "shot_id": candidate["shot_id"],
