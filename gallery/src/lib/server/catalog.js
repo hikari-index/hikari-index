@@ -84,7 +84,7 @@ export const REASON_KINDS = ["text", "rating", "unsure", "scale"];
 // What Worth a look shows, and the Review page counts, unless asked for
 // more. An unsure shot scale is opt-in: the scenery tag and the head lane
 // score below the cut by design, so it marks a quarter to a half of a work's
-// stills (measured 2026-10-06), most of them right.
+// stills (measured 2026-10-06).
 export const DEFAULT_REASON_KINDS = ["text", "rating", "unsure"];
 
 // The picked stills with a reason to look, grouped by work in library
