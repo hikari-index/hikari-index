@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Optional
 
 from . import taxonomy
+from .shot_scale import HEAD_CUTS
 from .palette_labels import from_descriptor
 from .proposal import (CandidateEvidence, build_proposal, coverage,
                        field_sources, shot_scale_lane)
@@ -152,6 +153,9 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
             "scene_tag_threshold": (scene_tag_threshold
                                     if scene_tag_threshold is not None
                                     else tag_threshold),
+            # The head lane's height cuts, so a run says which made its
+            # head-lane labels (informational; nothing refuses on it).
+            "head_cuts": [cut for cut, _ in HEAD_CUTS],
         },
         "coverage": coverage([p["proposal"] for p in proposals]),
         "content_coverage": _content_coverage(proposals),
