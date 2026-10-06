@@ -38,7 +38,7 @@
     {#each data.runs as r, i (i)}
       <li>
         {r.n} {r.n === 1 ? "still" : "stills"}:
-        {#if r.allowlist}tag list <span class="mono">{r.allowlist}</span>{:else}a run from before the tag list was recorded{/if}{#if r.cuts?.tag != null}, tags counted from score {r.cuts.tag}{#if r.cuts.scene != null && r.cuts.scene !== r.cuts.tag} ({r.cuts.scene} for setting, time and weather){/if}{/if}{#if r.fusion}, fusion <span class="mono">{r.fusion}</span>{/if}
+        {#if r.allowlist}tag list <span class="mono">{r.allowlist}</span>{:else}a run from before the tag list was recorded{/if}{#if r.cuts?.tag != null}, tags counted from score {r.cuts.tag}{#if r.cuts.scene != null && r.cuts.scene !== r.cuts.tag}{" "}({r.cuts.scene} for setting, time and weather){/if}{/if}{#if r.fusion}, fusion <span class="mono">{r.fusion}</span>{/if}
       </li>
     {/each}
   </ul>
