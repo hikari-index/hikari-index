@@ -70,10 +70,6 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu "torch==2.6.0+c
 FROM ${PYTHON_IMAGE}
 ARG HIKARI_UID=10001
 ARG HIKARI_GID=10001
-# The image's own tag, passed at build (--build-arg HIKARI_WORKER_VERSION=<tag>);
-# the build fails without it, so no image reports "dev".
-ARG HIKARI_WORKER_VERSION
-RUN test -n "$HIKARI_WORKER_VERSION" || { echo 'pass --build-arg HIKARI_WORKER_VERSION=<tag>' >&2; exit 1; }
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONPATH=/opt/hikari/inference \
     PYTHONDONTWRITEBYTECODE=1 \
@@ -82,7 +78,6 @@ ENV PATH=/opt/venv/bin:$PATH \
     TRANSFORMERS_OFFLINE=1 \
     HIKARI_DEVICE=cpu \
     HIKARI_WORKER_ID=cpu-worker \
-    HIKARI_WORKER_VERSION=${HIKARI_WORKER_VERSION} \
     LANG=C.UTF-8
 RUN groupadd --gid "${HIKARI_GID}" hikari \
     && useradd --uid "${HIKARI_UID}" --gid "${HIKARI_GID}" --create-home --shell /usr/sbin/nologin hikari
@@ -108,5 +103,13 @@ COPY providers/selection /opt/hikari/inference/selection
 COPY worker/hikari_worker /opt/hikari/inference/hikari_worker
 USER hikari
 WORKDIR /home/hikari
+
+# The image's own tag, passed at build (--build-arg HIKARI_WORKER_VERSION=<tag>);
+# the build fails without it, so no image reports "dev". Last, so a new
+# version changes no layer above it and an update downloads only what changed.
+ARG HIKARI_WORKER_VERSION
+RUN test -n "$HIKARI_WORKER_VERSION" || { echo 'pass --build-arg HIKARI_WORKER_VERSION=<tag>' >&2; exit 1; }
+ENV HIKARI_WORKER_VERSION=${HIKARI_WORKER_VERSION}
+
 HEALTHCHECK NONE
 CMD ["python", "-m", "hikari_worker.analyze"]
