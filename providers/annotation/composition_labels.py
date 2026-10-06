@@ -99,7 +99,7 @@ def resolve(
     if x is None:
         # No face: the largest head, from the anime head detector, which sees
         # the back of a head and a profile. Its centre tracks the face centre
-        # at Pearson 0.981 on the 852 gold-set frames that have both (the best
+        # at Pearson 0.978 on the 852 gold-set frames that have both (the best
         # non-model estimator reached 0.689 and lost), and these rules give
         # the same value from either on 82% of them; the rest sit near a
         # tolerance edge. Scored below the face rule for that.

@@ -80,14 +80,17 @@ to score each lane separately.
 The residue was mostly people shot from behind or too far away to detect a
 face. The head lane reads it from an anime head detector
 (`inference.detect_figures`), which sees the back of a head: the largest
-head's height as a share of the frame's, cut at 0.18 and 0.68. On a
+head's height as a share of the frame's, cut at 0.19 and 0.72. On a
 nine-work test set (1,800 frames) a head box covered 97% of detected faces,
-head height ordered with face size (Spearman 0.95), the cuts reproduced the
-face lane's class on 82-85% of frames from works they were not fitted on, and
-the lane answered 14% of frames that had abstained. It comes last and scores
-low, so it fills empty frames and changes no other lane's answer. The same
-head box gives composition a subject position where no face was found
-(centre tracking the face centre at Pearson 0.98 where both exist).
+head height ordered with face size (Spearman 0.95), and the cuts reproduced
+the face lane's class on 83-86% of frames from works they were not fitted
+on. It comes last, so it only fills frames the other lanes left empty (14%
+of the test set), and changes no other lane's answer. On those fills it is a
+best guess, not an answer: it agreed with the reviewed sample on 3 of 10
+frames, so it scores below the gallery's "unsure" cut and is meant to be
+accepted or corrected. The same head box gives composition a subject
+position where no face was found; there the evidence is strong (its centre
+tracks the face centre at Pearson 0.978 where both exist).
 
 Two known limits, both measured rather than assumed. The face cut points sit at
 the geometric mean between the medians of adjacent classes, which is defensible

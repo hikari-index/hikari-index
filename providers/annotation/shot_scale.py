@@ -57,12 +57,12 @@ FACE_FLOOR_VALUE = "wide"
 #: of a head, a profile, a figure too far off for the face detector.
 #: Calibrated 2026-10-06 against the face lane on the 852 gold-set frames
 #: where a head box covers the largest face (the face lane's class as the
-#: label): these cuts reproduce it on 87% (fitted on four works, 82-85% on
+#: label): these cuts reproduce it on 87% (fitted on four works, 83-86% on
 #: the other five; always answering medium scores 57%). The extremes are not
 #: asserted, as for the face lane.
 HEAD_CUTS = (
-    (0.68, "close-up"),
-    (0.18, "medium"),
+    (0.72, "close-up"),
+    (0.19, "medium"),
 )
 HEAD_FLOOR_VALUE = "wide"
 #: A head this close to a cut (in share of frame height) scores lower.
@@ -70,14 +70,17 @@ NEAR_HEAD_CUT = 0.05
 
 #: A lane that reaches a value it cannot defend precisely still routes to a
 #: human. These sit below the protocol's confident band on purpose. The head
-#: lane sits lowest with scenery: on frames no other lane reaches it was
-#: checked by eye on 36 frames (about 28 right; the misses were heads found
-#: on round objects, a credits card and adjacent classes), not yet on a
-#: reviewed sample.
+#: lane is a best guess for review, not an answer: on the frames it fills
+#: (the ones every other lane left empty) it agreed with the reviewed sample
+#: on only 3 of 10, the misses being adjacent classes near a cut, a head
+#: found on a hand, a distant head behind a close-up subject and full
+#: figures where medium and wide are arguable; by eye on 36 random fills
+#: about 28 looked right. Its scores sit below the 0.35 the gallery treats
+#: as unsure, so what it proposes is for a person to accept or correct.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
-HEAD_BASE_SCORE = 0.40
-HEAD_EDGE_SCORE = 0.30
+HEAD_BASE_SCORE = 0.30
+HEAD_EDGE_SCORE = 0.25
 SCENERY_SCORE = 0.30
 
 #: How close to a cut point counts as "near it", in log space, since the cuts

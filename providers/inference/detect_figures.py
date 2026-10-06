@@ -23,7 +23,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 import sys
 import time
 from pathlib import Path
@@ -43,9 +42,10 @@ PERSON_SCORE = 0.324
 # these models is 0.7 for heads, 0.5 for figures).
 HEAD_IOU = 0.7
 PERSON_IOU = 0.5
-# Longest side of the image the detector sees, as imgutils runs them.
-MAX_SIDE = 640
-ALIGN = 32
+# The square the detector sees. imgutils' default (yolo_predict without
+# allow_dynamic) stretches every frame to it; the head-height cuts in
+# annotation/shot_scale.py were calibrated on exactly this input.
+INPUT_SIDE = 640
 
 
 def _session(path: Path):
@@ -56,10 +56,12 @@ def _session(path: Path):
 
 
 def _nms(boxes, scores, iou):
+    """imgutils' NMS, +1 pixel arithmetic included, so the same boxes
+    survive as in the reference."""
     import numpy as np
     order = scores.argsort()[::-1]
     keep = []
-    area = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
+    area = (boxes[:, 2] - boxes[:, 0] + 1) * (boxes[:, 3] - boxes[:, 1] + 1)
     while order.size:
         i = order[0]
         keep.append(int(i))
@@ -68,40 +70,43 @@ def _nms(boxes, scores, iou):
         y0 = np.maximum(boxes[i, 1], boxes[rest, 1])
         x1 = np.minimum(boxes[i, 2], boxes[rest, 2])
         y1 = np.minimum(boxes[i, 3], boxes[rest, 3])
-        inter = np.clip(x1 - x0, 0, None) * np.clip(y1 - y0, 0, None)
-        overlap = inter / (area[i] + area[rest] - inter + 1e-9)
+        inter = np.maximum(0.0, x1 - x0 + 1) * np.maximum(0.0, y1 - y0 + 1)
+        overlap = inter / (area[i] + area[rest] - inter)
         order = rest[overlap <= iou]
     return keep
 
 
 def detect(session, image, score_cut: float, iou: float) -> list[dict]:
-    """One YOLOv8 pass the way imgutils runs these models: keep the aspect,
-    longest side to 640, both sides rounded up to a multiple of 32, no
-    padding; boxes mapped back to the frame's own pixels."""
+    """One YOLOv8 pass the way imgutils runs these models by default: the
+    frame stretched to 640x640 with Pillow's bicubic resize, scores above
+    the cut, NMS, boxes mapped back to the frame's pixels, rounded and
+    clipped to it."""
     import numpy as np
     from PIL import Image
     width, height = image.size
-    ratio = min(MAX_SIDE / width, MAX_SIDE / height, 1.0)
-    w = int(math.ceil(width * ratio / ALIGN) * ALIGN)
-    h = int(math.ceil(height * ratio / ALIGN) * ALIGN)
-    x = np.asarray(image.resize((w, h), Image.BILINEAR), dtype=np.float32) / 255.0
+    x = np.asarray(image.resize((INPUT_SIDE, INPUT_SIDE), Image.Resampling.BICUBIC),
+                   dtype=np.float32) / 255.0
     out = session.run(None, {session.get_inputs()[0].name: x.transpose(2, 0, 1)[None]})[0][0]
     if out.shape[0] != 5:  # one class: rows are cx, cy, w, h, score
         out = out.T
-    keep = out[4] >= score_cut
+    keep = out[4] > score_cut
     cx, cy, bw, bh = out[:4, keep]
     scores = out[4, keep]
     if not scores.size:
         return []
     boxes = np.stack([cx - bw / 2, cy - bh / 2, cx + bw / 2, cy + bh / 2], axis=1)
-    sx, sy = width / w, height / h
+    sx, sy = width / INPUT_SIDE, height / INPUT_SIDE
+
+    def px(value, scale, limit):
+        return int(round(min(max(float(value) * scale, 0.0), float(limit))))
+
     found = []
     for i in _nms(boxes, scores, iou):
-        x0, y0 = max(0.0, boxes[i, 0] * sx), max(0.0, boxes[i, 1] * sy)
-        x1, y1 = min(float(width), boxes[i, 2] * sx), min(float(height), boxes[i, 3] * sy)
+        x0, y0 = px(boxes[i, 0], sx, width), px(boxes[i, 1], sy, height)
+        x1, y1 = px(boxes[i, 2], sx, width), px(boxes[i, 3], sy, height)
         found.append({
             "score": round(float(scores[i]), 6),
-            "box": [round(float(x0), 2), round(float(y0), 2), round(float(x1), 2), round(float(y1), 2)],
+            "box": [x0, y0, x1, y1],
             # Share of the frame's height: the shot-scale cue, independent
             # of the frame's aspect.
             "height_fraction": round(float((y1 - y0) / height), 6),

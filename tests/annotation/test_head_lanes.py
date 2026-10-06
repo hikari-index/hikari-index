@@ -23,7 +23,7 @@ ALLOWLIST = load()
 
 
 @pytest.mark.parametrize("height,expected", [
-    (0.95, "close-up"), (0.70, "close-up"), (0.45, "medium"), (0.20, "medium"), (0.10, "wide"),
+    (0.95, "close-up"), (0.75, "close-up"), (0.45, "medium"), (0.20, "medium"), (0.10, "wide"),
 ])
 def test_head_height_bands(height, expected):
     verdict = from_head_height(height)
@@ -92,7 +92,7 @@ class _FakeSession:
 
 
 def test_detect_resizes_like_imgutils_and_maps_boxes_back():
-    # 1920x1080 -> 640x360, rounded up to multiples of 32: 640x384.
+    # imgutils' default: any frame stretched to 640x640.
     session = _FakeSession([
         [320.0, 320.0, 100.0],      # cx
         [192.0, 192.0, 50.0],       # cy
@@ -101,9 +101,15 @@ def test_detect_resizes_like_imgutils_and_maps_boxes_back():
         [0.9, 0.8, 0.2],            # score: the second overlaps the first; the third is below the cut
     ])
     found = detect(session, Image.new("RGB", (1920, 1080)), score_cut=0.4, iou=0.5)
-    assert session.seen == (1, 3, 384, 640)
+    assert session.seen == (1, 3, 640, 640)
     assert len(found) == 1
-    x0, y0, x1, y1 = found[0]["box"]
-    assert (round(x0), round(x1)) == (864, 1056)        # 288..352 scaled by 3
-    assert (round(y0), round(y1)) == (405, 675)         # 144..240 scaled by 1080/384
-    assert found[0]["height_fraction"] == pytest.approx(0.25)
+    assert found[0]["box"] == [864, 243, 1056, 405]     # x by 1920/640, y by 1080/640
+    assert found[0]["height_fraction"] == pytest.approx(0.15)
+
+
+def test_nms_matches_imgutils_plus_one_arithmetic():
+    from inference.detect_figures import _nms
+    # IoU 0.6833 without the +1 terms, 0.7077 with them: imgutils drops the
+    # second box at the heads' 0.7.
+    boxes = np.array([[0, 0, 10, 10], [1.8, 0, 12, 10]], dtype=np.float32)
+    assert _nms(boxes, np.array([0.9, 0.8], dtype=np.float32), 0.7) == [0]
