@@ -27,6 +27,15 @@
   }
   const noticeParts = $derived(linkify(data.notice ?? ""));
 
+  // The header stays at the top while a long page scrolls. It becomes sticky
+  // only once measured (it can wrap on a narrow phone), in the same step that
+  // publishes its height as --header-h: other sticky bars sit under it and
+  // anchor jumps land below it. Without script it scrolls away as before.
+  let headerHeight = $state(0);
+  $effect(() => {
+    if (headerHeight) document.documentElement.style.setProperty("--header-h", `${headerHeight}px`);
+  });
+
   // Which top-level section the current path belongs to, for the header mark.
   const section = $derived.by(() => {
     if (page.error) return null; // an address that is nowhere marks nothing
@@ -40,7 +49,7 @@
 </script>
 
 <a class="skip" href="#main">Skip to content</a>
-<header>
+<header bind:offsetHeight={headerHeight} class:stuck={headerHeight > 0}>
   <a class="brand" href="/">Hikari Index</a>
   <nav>
     <a href="/series" aria-current={section === "library" ? "page" : undefined}>Library</a>
@@ -84,6 +93,12 @@
     min-height: 56px;
     padding: 0 var(--gutter);
     border-bottom: 1px solid var(--line-1);
+  }
+  header.stuck {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bg-0);
   }
   .brand {
     display: flex;

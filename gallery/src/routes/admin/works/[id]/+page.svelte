@@ -305,7 +305,7 @@
   }
   .bar {
     position: sticky;
-    top: 0;
+    top: var(--header-h);
     z-index: 2;
     display: flex;
     align-items: center;

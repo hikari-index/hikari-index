@@ -12,13 +12,14 @@
   const extra = $derived(ready.reduce((n, w) => n + (w.frames?.extra ?? 0), 0));
   const extraBytes = $derived(ready.reduce((n, w) => n + (w.frames?.extraBytes ?? 0), 0));
   const kept = $derived(ready.reduce((n, w) => n + (w.frames?.kept ?? 0), 0));
+  const frames = (n) => (n === 1 ? "frame" : "frames");
   function line(w) {
     if (w.blocker) return w.blocker;
     if (!w.frames) return "sizes unavailable";
-    return `deletes ${w.frames.extra} extra frames, ${size(w.frames.extraBytes)} · leaves the ${w.frames.kept} picked frames in that folder and the bundle's masters`;
+    return `deletes ${w.frames.extra} extra ${frames(w.frames.extra)}, ${size(w.frames.extraBytes)} · leaves the ${w.frames.kept} picked ${frames(w.frames.kept)} in that folder and the bundle's masters`;
   }
   function confirmDiscard(e) {
-    if (!confirm(`Discard ${extra} extra frames (${size(extraBytes)}) of ${p.label}?\n\nThe picked stills and every record stay. This cannot be undone, and the work cannot be re-run afterwards.`)) e.preventDefault();
+    if (!confirm(`Discard ${extra} extra ${frames(extra)} (${size(extraBytes)}) of ${p.label}?\n\nThe picked stills and every record stay. This cannot be undone, and the work cannot be re-run afterwards.`)) e.preventDefault();
   }
 </script>
 
@@ -48,13 +49,13 @@
       </tbody>
     </table>
     {#if ready.length}
-      <p class="meta sum">{ready.length} {ready.length === 1 ? "work" : "works"} · {extra} extra frames, {size(extraBytes)} to delete · every picked still stays{p.works.length > ready.length ? ` · ${p.works.length - ready.length} skipped` : ""}</p>
+      <p class="meta sum">{ready.length} {ready.length === 1 ? "work" : "works"} · {extra} extra {frames(extra)}, {size(extraBytes)} to delete · every picked still stays{p.works.length > ready.length ? ` · ${p.works.length - ready.length} skipped` : ""}</p>
       <form method="POST" action="?/discard" onsubmit={confirmDiscard}>
         <input type="hidden" name="scope" value={p.scope} />
         <input type="hidden" name="id" value={p.target} />
         <input type="hidden" name="expect" value={p.expect} />
         <label class="ok"><input type="checkbox" name="understood" value="yes" required /> Delete the extra frames. It cannot be undone; a re-run will no longer be possible.</label>
-        <button type="submit" class="danger">Discard {extra} frames</button>
+        <button type="submit" class="danger">Discard {extra} {frames(extra)}</button>
       </form>
     {:else}
       <p class="meta">Nothing here can be discarded now.</p>

@@ -61,10 +61,13 @@ export function checkLogin(user, password) {
   return sameUser && verifyPassword(password, wantHash);
 }
 
-export const cookieOptions = (expires) => ({
+// Secure when the gallery is reached over HTTPS (ORIGIN, or the proxy's
+// protocol header). Sign-out passes the same options: over plain HTTP a
+// browser ignores a Secure delete, which left the owner signed in.
+export const cookieOptions = (url, expires) => ({
   path: "/",
   httpOnly: true,
   sameSite: "lax",
-  secure: false, // LAN over plain HTTP today; set true behind TLS
-  expires,
+  secure: url.protocol === "https:",
+  ...(expires ? { expires } : {}),
 });

@@ -23,7 +23,7 @@ export const actions = {
       return fail(400, { message: "That name and password do not match." });
     }
     const session = issueSession(user);
-    cookies.set(COOKIE, session.value, cookieOptions(session.expires));
+    cookies.set(COOKIE, session.value, cookieOptions(url, session.expires));
     redirect(303, safeNext(url.searchParams.get("next")));
   },
 };
