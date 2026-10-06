@@ -2,10 +2,12 @@
   import { enhance } from "$app/forms";
   import { formatTime, mediaUrl, placeholder } from "$lib/format.js";
   let { data, form } = $props();
-  const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure label" };
+  const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", scale: "unsure shot scale" };
+  // Where a shot scale came from, in words (provenance.fields sources).
+  const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "the tagger's tags", "face-occupancy": "the size of a face" };
   const query = (kinds, all) => {
     const q = new URLSearchParams();
-    if (kinds.length && kinds.length < 3) q.set("k", kinds.join(","));
+    if (kinds.length && kinds.length < Object.keys(KINDS).length) q.set("k", kinds.join(","));
     if (all) q.set("all", "1");
     const s = q.toString();
     return `/admin/exceptions${s ? `?${s}` : ""}`;
@@ -17,6 +19,7 @@
     if (r.k === "text") return `text: ${r.tags.map((t) => t.replaceAll("_", " ")).join(", ")}`;
     if (r.k === "rating") return `rating: questionable or explicit at ${r.score}`;
     if (r.k === "unsure") return `unsure: ${r.label.replaceAll("-", " ")} at ${r.score}`;
+    if (r.k === "scale") return `unsure shot scale: ${r.label.replaceAll("-", " ")} at ${r.score}${FROM[r.source] ? `, from ${FROM[r.source]}` : ""}`;
     return r.k;
   }
   function marks(s) {
@@ -51,7 +54,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Everything else was proposed with the confidence the review calibration accepted nine times in ten. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label or shot scale proposed below the usual cut. Everything else was proposed with the confidence the review calibration accepted nine times in ten. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">

@@ -42,10 +42,12 @@ from . import taxonomy
 #: corrected to close-up. The one extreme-wide assertion (0.0007) was also
 #: corrected, to wide. On the calibration sample these cuts score 48/53
 #: against the old bounds' 44/53, and every remaining miss is an adjacent
-#: class. No lane asserts the extremes today: the allowlist maps no tagger tag
-#: to `extreme-close-up` or `extreme-wide`, and the scenery lane answers
-#: `wide`. Making either reachable needs a tag in the checkpoint's vocabulary
-#: that names it, checked against reviewed frames.
+#: class. Only the tagger lane asserts an extreme: `eye_focus` maps to
+#: `extreme-close-up` (allowlist 4, 2026-10-06; above about 0.45 on the gold
+#: set nearly every hit was an eye or the band of a face around the eyes
+#: filling the frame, checked by eye on all 26 hits over 0.35). Nothing
+#: reaches `extreme-wide`: `very_wide_shot` cleared 0.35 on 3 of 1,800 gold
+#: frames, and the reviewed one was called wide.
 FACE_CUTS = (
     (0.14, "close-up"),
     (0.009, "medium"),

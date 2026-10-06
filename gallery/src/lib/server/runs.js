@@ -134,6 +134,16 @@ export function reviewReasons(tagRecord, proposal) {
     if (s.family !== "setting-time-weather" || s.label === "abstain" || !(s.score < UNSURE_CUT)) continue;
     out.push({ k: "unsure", label: s.label, score: Math.round(s.score * 100) / 100 });
   }
+  // A shot scale proposed below the same cut (#19): the scenery tag and the
+  // head lane score there by design. Its own kind, so Worth a look can show
+  // or leave it out apart from the scene labels: on the gold set it would
+  // flag about a quarter of stills, most of them from the scenery tag,
+  // which review accepted 54 times in 59.
+  const scale = (proposal?.proposal?.scores || []).find((s) => s.family === "shot-scale");
+  if (scale && scale.label !== "abstain" && scale.score < UNSURE_CUT) {
+    const source = proposal.provenance?.fields?.shot_scale?.source ?? proposal.provenance?.shot_scale_lane ?? null;
+    out.push({ k: "scale", label: scale.label, score: Math.round(scale.score * 100) / 100, source });
+  }
   return out;
 }
 

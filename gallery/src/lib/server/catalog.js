@@ -80,7 +80,7 @@ function toStill(row, admin = false) {
   };
 }
 
-export const REASON_KINDS = ["text", "rating", "unsure"];
+export const REASON_KINDS = ["text", "rating", "unsure", "scale"];
 
 // The picked stills with a reason to look, grouped by work in library
 // order. kinds: which reasons count; all: reviewed ones too (the default
