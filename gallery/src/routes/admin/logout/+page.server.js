@@ -1,9 +1,9 @@
 import { redirect } from "@sveltejs/kit";
-import { COOKIE } from "$lib/server/auth.js";
+import { COOKIE, cookieOptions } from "$lib/server/auth.js";
 
 export const actions = {
-  default: async ({ cookies }) => {
-    cookies.delete(COOKIE, { path: "/" });
+  default: async ({ cookies, url }) => {
+    cookies.delete(COOKIE, cookieOptions(url));
     redirect(303, "/");
   },
 };

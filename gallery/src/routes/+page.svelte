@@ -338,8 +338,8 @@
   }
   .explore.wide .rail {
     position: sticky;
-    top: var(--s-4);
-    max-height: calc(100vh - var(--s-6));
+    top: calc(var(--header-h) + var(--s-4));
+    max-height: calc(100vh - var(--header-h) - var(--s-6));
     overflow-y: auto;
     border-top: 0;
     padding-top: 0;

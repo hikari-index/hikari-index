@@ -115,7 +115,7 @@
       <ol class="list">
         {#each data.stages as s (s.label)}<li>{s.label} <span class="muted">· {s.machine}</span></li>{/each}
       </ol>
-      <p class="meta">"Describe each frame" means tags for what is in it, faces for how it is framed, and an image fingerprint that similar-stills and mood search compare against. The text encoder is not a step here: it only reads the phrases you type into mood search. The analyze step runs on whichever analyze worker is checked in (Jobs lists them). Color is taken from the video's own color tags. The works run one after another, in this order.</p>
+      <p class="meta">"Describe each frame" means tags for what is in it, faces for how it is framed, and an image fingerprint that similar-stills and mood search compare against. The text encoder is not a step here: it only reads the phrases you type into mood search. The analyze step runs on whichever analyze worker is running; Jobs shows which machine picked each one up. Color is taken from the video's own color tags. The works run one after another, in this order.</p>
 
       <button type="submit" class="go">Onboard {ready.length === 1 ? "it" : `all ${ready.length}`}</button>
     </form>

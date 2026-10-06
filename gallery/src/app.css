@@ -466,6 +466,15 @@ table.data th.text {
   scroll-margin-top: 30vh;
 }
 
+/* The sticky header: anchor jumps and scrolled-to rows land below it, not
+   under it. +layout.svelte sets --header-h and makes the header sticky in the
+   same step, once it has measured it; until then (or without script) the
+   header scrolls away as before and nothing is offset. */
+html {
+  --header-h: 0px;
+  scroll-padding-top: var(--header-h);
+}
+
 /* An image box shows the still's own color (placeholder()) until the image
    arrives; the alt text stays for screen readers but is not painted. */
 img {
