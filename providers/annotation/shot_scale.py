@@ -15,9 +15,9 @@ episodes 38-54% of published frames have none. Face occupancy is a strong
 signal inside its domain and blind outside it, which is exactly the shape a
 lane should have.
 
-Nothing here guesses. A frame that no lane reaches abstains, and on the
-measured episodes that is 17-26% of frames -- mostly people shot from behind or
-too far away for a face. Those need a signal that does not exist yet.
+Nothing here guesses. A frame that no lane reaches abstains. On the measured
+episodes that was 17-26% of frames, mostly people shot from behind or too far
+away for a face; the head lane (2026-10-06) reaches about half of those.
 """
 
 from __future__ import annotations
@@ -52,10 +52,32 @@ FACE_CUTS = (
 )
 FACE_FLOOR_VALUE = "wide"
 
+#: Head height as a share of frame height, for frames no other lane
+#: reaches: the anime head detector (inference.detect_figures) sees the back
+#: of a head, a profile, a figure too far off for the face detector.
+#: Calibrated 2026-10-06 against the face lane on the 852 gold-set frames
+#: where a head box covers the largest face (the face lane's class as the
+#: label): these cuts reproduce it on 87% (fitted on four works, 82-85% on
+#: the other five; always answering medium scores 57%). The extremes are not
+#: asserted, as for the face lane.
+HEAD_CUTS = (
+    (0.68, "close-up"),
+    (0.18, "medium"),
+)
+HEAD_FLOOR_VALUE = "wide"
+#: A head this close to a cut (in share of frame height) scores lower.
+NEAR_HEAD_CUT = 0.05
+
 #: A lane that reaches a value it cannot defend precisely still routes to a
-#: human. These sit below the protocol's confident band on purpose.
+#: human. These sit below the protocol's confident band on purpose. The head
+#: lane sits lowest with scenery: on frames no other lane reaches it was
+#: checked by eye on 36 frames (about 28 right; the misses were heads found
+#: on round objects, a credits card and adjacent classes), not yet on a
+#: reviewed sample.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
+HEAD_BASE_SCORE = 0.40
+HEAD_EDGE_SCORE = 0.30
 SCENERY_SCORE = 0.30
 
 #: How close to a cut point counts as "near it", in log space, since the cuts
@@ -106,6 +128,23 @@ def from_face_occupancy(fraction: float) -> ShotScale:
                      score=score, lane="face-occupancy")
 
 
+def from_head_height(fraction: float) -> ShotScale:
+    """Largest head's height as a share of the frame's, mapped to a scale.
+    Nearness is linear here: head height spans one order of magnitude, not
+    three."""
+    if fraction <= 0.0:
+        return ABSTAIN
+    value = HEAD_FLOOR_VALUE
+    for cut, label in HEAD_CUTS:
+        if fraction >= cut:
+            value = label
+            break
+    near = any(abs(fraction - cut) < NEAR_HEAD_CUT for cut, _ in HEAD_CUTS)
+    return ShotScale(value=taxonomy.check("shot_scale", value),
+                     score=HEAD_EDGE_SCORE if near else HEAD_BASE_SCORE,
+                     lane="head-height")
+
+
 def from_scenery(scenery_tagged: bool) -> ShotScale:
     """A frame the tagger calls scenery is a landscape, and landscapes are wide.
 
@@ -143,14 +182,16 @@ def resolve(
     tagger_score: float,
     face_fraction: Optional[float] = None,
     scenery_tagged: bool = False,
+    head_height: Optional[float] = None,
 ) -> ShotScale:
     """First lane that applies, in descending order of trust.
 
     The tagger goes first because it read the frame and named the scale
     directly. Face occupancy goes second because it is a measurement rather
-    than a naming, and it is only valid where a face exists. Scenery goes last
-    because it infers scale from subject matter, which is the weakest of the
-    three.
+    than a naming, and it is only valid where a face exists. Scenery goes
+    third because it infers scale from subject matter (accepted on 54 of 59
+    reviewed frames). Head height comes last, so it only fills frames every
+    other lane left empty and changes no answer they give.
     """
     if tagger_value not in ("abstain", "unknown"):
         return ShotScale(value=tagger_value, score=tagger_score, lane="tagger")
@@ -158,4 +199,7 @@ def resolve(
         by_face = from_face_occupancy(face_fraction)
         if by_face.backed:
             return by_face
-    return from_scenery(scenery_tagged)
+    by_scenery = from_scenery(scenery_tagged)
+    if by_scenery.backed or not head_height:
+        return by_scenery
+    return from_head_height(head_height)

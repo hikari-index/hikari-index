@@ -28,8 +28,14 @@ each model page at the pinned revision, checked 2026-10-03:
   WD SwinV2 tagger v3, SmilingWolf/wd-swinv2-tagger-v3 Apache License 2.0
   hysts/anime-face-detector-faster-rcnn                MIT License
   hysts/anime-face-detector-hrnetv2                    MIT License
+  deepghs/anime_head_detection (head_detect_v2.0_s)    MIT License
+  deepghs/anime_person_detection (person_detect_v1.3_s) MIT License
 
-The anime-face-detector Python package is MIT as well. A model page can
+The two deepghs detectors (checked 2026-10-06) were trained with
+Ultralytics YOLOv8, and their files name Ultralytics' AGPL-3.0 licence
+in their metadata; Hikari Index is AGPL-3.0 as well. The
+anime-face-detector Python package is MIT, and onnxruntime, which runs
+the deepghs detectors, is MIT. A model page can
 change; read it again before you redistribute an image.
 
 NVIDIA CUDA and cuDNN runtime libraries (the GPU analyze image only; the

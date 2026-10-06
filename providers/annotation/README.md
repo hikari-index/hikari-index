@@ -53,7 +53,7 @@ the zero-shot filler measured as no signal at all.
 `shot_scale` is addressed (below) and `composition` has its rules (the table
 above predates them). `angle` remains open.
 
-### Shot scale resolves through three lanes, not one
+### Shot scale resolves through lanes, not one signal
 
 Face size is a strong signal and a blind one: it cannot see a frame without a
 face, and 38–54% of published frames have none. So `shot_scale.py` runs a
@@ -65,17 +65,29 @@ descending order of trust, and the first that applies answers.
 | tagger | the tagger named a scale outright | 20% / 11% |
 | face occupancy | at least one face detected | 42% / 34% |
 | scenery | tagged `scenery`, no face | 16% / 11% |
+| head height | a head box, nothing above answered | (added later, below) |
 | none — abstains | anything else | 22% / 44% |
 
-Coverage went from 20% → **78%** (episode A) and 11% → **56%** (episode B).
+Coverage went from 20% → **78%** (episode A) and 11% → **56%** (episode B)
+before the head lane.
 
 The lanes are deliberately not a vote, and every proposal records which lane
-answered it under `provenance.shot_scale_lane`. A single accuracy figure over a
+answered it under `provenance.shot_scale_lane` (and, for every label, its
+source and score under `provenance.fields`). A single accuracy figure over a
 cascade tells you nothing about which signal to fix; the reviewed sample has to be able
 to score each lane separately.
 
-The residue abstains rather than guessing. It is mostly people shot from behind
-or too far away to detect a face — a signal that does not exist yet.
+The residue was mostly people shot from behind or too far away to detect a
+face. The head lane reads it from an anime head detector
+(`inference.detect_figures`), which sees the back of a head: the largest
+head's height as a share of the frame's, cut at 0.18 and 0.68. On a
+nine-work test set (1,800 frames) a head box covered 97% of detected faces,
+head height ordered with face size (Spearman 0.95), the cuts reproduced the
+face lane's class on 82-85% of frames from works they were not fitted on, and
+the lane answered 14% of frames that had abstained. It comes last and scores
+low, so it fills empty frames and changes no other lane's answer. The same
+head box gives composition a subject position where no face was found
+(centre tracking the face centre at Pearson 0.98 where both exist).
 
 Two known limits, both measured rather than assumed. The face cut points sit at
 the geometric mean between the medians of adjacent classes, which is defensible

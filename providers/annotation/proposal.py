@@ -57,6 +57,11 @@ class CandidateEvidence:
     entropy: Optional[float] = None
     faces: tuple = ()
     frame_width: int = 0
+    # Head boxes from the anime head detector (inference.detect_figures),
+    # largest first, and the largest one's height as a share of the frame's.
+    # Used only where no face answered.
+    heads: tuple = ()
+    head_height: Optional[float] = None
     quality_labels: tuple[str, ...] = ("usable",)
     quality_disposition: str = "review"
     quality_score: float = QUALITY_USABLE_SCORE
@@ -72,6 +77,7 @@ def _composition(evidence: CandidateEvidence):
         text_present=evidence.wd.text_present if evidence.wd is not None else False,
         faces=evidence.faces,
         frame_width=evidence.frame_width,
+        heads=evidence.heads,
     )
 
 
@@ -82,6 +88,7 @@ def _shot_scale(evidence: CandidateEvidence):
         wd.score("shot_scale") if wd else 0.0,
         face_fraction=evidence.face_fraction,
         scenery_tagged=evidence.scenery_tagged,
+        head_height=evidence.head_height,
     )
 
 
