@@ -85,7 +85,8 @@ NEAR_HEAD_CUT = 0.05
 #: frames the head lane fills (the ones every other lane left empty) it
 #: agreed with the July reviewed sample on only 3 of 10; a blind grade of
 #: fresh works (2026-10-07, cuts never fitted on them) found its fills right
-#: on 10 of 11 faceless frames, the eleventh arguable. Its scores stay below
+#: on 8 of 11 faceless frames; two misses were head and shoulders called
+#: close-up (heads 0.79 and 0.82 of frame height). Its scores stay below
 #: the 0.35 the gallery treats as unsure for scene labels until a second
 #: sample agrees; routing unsure shot-scale labels to Worth a look is #19.
 FACE_BASE_SCORE = 0.55
