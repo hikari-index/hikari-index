@@ -53,6 +53,18 @@ the zero-shot filler measured as no signal at all.
 `shot_scale` is addressed (below) and `composition` has its rules (the table
 above predates them). `angle` remains open.
 
+### What the shot sizes mean
+
+In film terms: `extreme-close-up` is a detail filling the frame;
+`close-up` is a face or head filling most of it, with little or no
+shoulder; `medium` runs from head and shoulders down to about the knees
+(film's medium close-up, medium and medium long shots); `wide` is the whole
+figure, just fitting or with plenty of room; `extreme-wide` is a place with
+figures tiny or absent. Head and shoulders is medium, not close-up: a blind
+grade of fresh works found a third of graded frames were head-and-shoulders,
+the lanes already called most of them medium, and their face sizes overlap
+close-ups' too much for any cut to separate the two.
+
 ### Shot scale resolves through lanes, not one signal
 
 Face size is a strong signal and a blind one: it cannot see a frame without a
@@ -85,9 +97,11 @@ nine-work test set (1,800 frames) a head box covered 97% of detected faces,
 head height ordered with face size (Spearman 0.95), and the cuts reproduced
 the face lane's class on 83-86% of frames from works they were not fitted
 on. It comes last, so it only fills frames the other lanes left empty (14%
-of the test set), and changes no other lane's answer. On those fills it is a
-best guess, not an answer: it agreed with the reviewed sample on 3 of 10
-frames, so it scores low. The same head box gives composition a subject
+of the test set), and changes no other lane's answer. On those fills it
+agreed with the July reviewed sample on only 3 of 10 frames; a blind grade
+of fresh works (shows the cuts were never fitted on) found it right on 10 of
+11 faceless frames it filled, the eleventh arguable. It still scores low, so
+its answers reach review, until a second sample agrees. The same head box gives composition a subject
 position where no face was found; there the evidence is strong (its center
 tracks the face center at Pearson 0.978 where both exist).
 
