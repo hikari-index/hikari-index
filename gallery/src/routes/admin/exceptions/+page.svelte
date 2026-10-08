@@ -2,14 +2,14 @@
   import { enhance } from "$app/forms";
   import { formatTime, mediaUrl, placeholder } from "$lib/format.js";
   let { data, form } = $props();
-  const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", scale: "unsure shot scale" };
+  const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", head: "shot size from a head", split: "face and head disagree", scale: "unsure shot scale" };
   // Where a shot scale came from, in words (provenance.fields sources).
   const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "the tagger's tags", "face-occupancy": "the size of a face" };
   const query = (kinds, all) => {
     const q = new URLSearchParams();
     // The default set needs no k=; any other choice is spelled out.
     const isDefault = kinds.length === data.defaultKinds.length && data.defaultKinds.every((k) => kinds.includes(k));
-    if (kinds.length && !isDefault) q.set("k", kinds.join(","));
+    if (!isDefault) q.set("k", kinds.join(","));
     if (all) q.set("all", "1");
     const s = q.toString();
     return `/admin/exceptions${s ? `?${s}` : ""}`;
@@ -21,7 +21,8 @@
     if (r.k === "text") return `text: ${r.tags.map((t) => t.replaceAll("_", " ")).join(", ")}`;
     if (r.k === "rating") return `rating: questionable or explicit at ${r.score}`;
     if (r.k === "unsure") return `unsure scene label: ${r.label.replaceAll("-", " ")} at ${r.score}`;
-    if (r.k === "scale" && r.head) return `unsure shot scale: ${r.label.replaceAll("-", " ")} from the size of a face, but the size of the head says ${r.head.replaceAll("-", " ")}`;
+    if (r.k === "split") return `face and head disagree: ${r.label.replaceAll("-", " ")} from the size of the face, ${r.head.replaceAll("-", " ")} from the size of the head`;
+    if (r.k === "head") return `shot size from a head: ${r.label.replaceAll("-", " ")} at ${r.score}, no face found`;
     if (r.k === "scale") return `unsure shot scale: ${r.label.replaceAll("-", " ")} at ${r.score}${FROM[r.source] ? `, from ${FROM[r.source]}` : ""}`;
     return r.k;
   }
@@ -57,7 +58,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag or from the size of a head, tags that pointed two ways, or a face and its head that disagree; often a quarter to a half of a work's stills.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Shot size from a head</strong> marks a size guessed from the height of a head where no face was found; on fresh works about two in three were right. <strong>Face and head disagree</strong> marks a size taken from the face where the same person's head points to another; the face's size was wrong about half the time on such frames. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag, or tags that pointed two ways.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">

@@ -130,7 +130,8 @@ export const stills = pgTable("stills", {
   // Reasons to look at this still before the rest (research/03 "review
   // only threshold/disagreement/sensitive exceptions"), set by import from
   // the run records: [{k: "text", tags}, {k: "rating", score}, {k: "unsure",
-  // label, score}, {k: "scale", label, score, source}]. Empty for most
+  // label, score}, {k: "head" | "scale", label, score, source},
+  // {k: "split", label, score, head}]. Empty for most
   // stills; the Worth-a-look page lists the rest.
   reviewReasons: jsonb("review_reasons").$type().notNull().default([]),
   // The other works of the same Shoko series this frame repeats in (an

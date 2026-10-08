@@ -1,5 +1,5 @@
 {
-  "prompt_set_version": "controlled-zeroshot-1",
+  "prompt_set_version": "controlled-zeroshot-2",
   "taxonomy_version": "visual-taxonomy-v2",
   "notes": [
     "Controlled zero-shot: the label set is fixed to taxonomy values and never free-form. research/02 assigns SigLIP 'controlled zero-shot ranking', not captioning.",
@@ -17,11 +17,11 @@
         ],
         "close-up": [
           "a close-up shot of a face filling most of the frame",
-          "a tight head-and-shoulders shot"
+          "a tight shot of a head with little or no shoulder"
         ],
         "medium": [
           "a medium shot framing a figure from the waist up",
-          "a mid shot showing a figure from the chest upward"
+          "a head-and-shoulders shot cut around the chest"
         ],
         "wide": [
           "a wide shot showing a full figure and the space around it",

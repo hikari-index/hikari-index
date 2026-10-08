@@ -51,7 +51,8 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
          tag_threshold: float = 0.35,
          scene_tag_threshold: Optional[float] = None,
          candidates: Optional[Path] = None,
-         figures: Optional[Path] = None) -> dict:
+         figures: Optional[Path] = None,
+         angle: Optional[Path] = None) -> dict:
     """`candidates` stands in for the bundle manifest: JSON `{"bundle_id",
     "candidates": [{"candidate_id", "shot_id", "width", "frame_quality"}]}`
     naming frames outside the bundle (the picked surplus, labeled after the
@@ -62,6 +63,7 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
     tags_by_candidate = _by_candidate(tags)
     faces_by_candidate = _by_candidate(faces)
     figures_by_candidate = _by_candidate(figures)
+    angle_by_candidate = _by_candidate(angle)
     # Composition geometry is read from the run's own audit file, where the
     # extraction stage writes it.
     quality_by_candidate = {}
@@ -115,6 +117,9 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
             frame_width=int(candidate.get("width") or 0),
             heads=heads,
             head_height=heads[0].get("height_fraction") if heads else None,
+            camera_angle=((angle_by_candidate[candidate_id]["angle"],
+                           angle_by_candidate[candidate_id]["score"])
+                          if candidate_id in angle_by_candidate else None),
         )
         try:
             proposal = build_proposal(
@@ -207,6 +212,9 @@ def main(argv: Optional[list[str]] = None) -> int:
                         help="head and figure detector result-manifest.json; "
                              "shot scale and composition use the largest head "
                              "where no face answered")
+    parser.add_argument("--angle",
+                        help="camera-angle classifier result-manifest.json; "
+                             "angle comes from it, not the tagger, when given")
     parser.add_argument("--shot-coverage",
                         help="the run's audit/shot-coverage.json; supplies the "
                              "composition geometry measured at extraction. "
@@ -238,6 +246,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         scene_tag_threshold=args.scene_tag_threshold,
         candidates=Path(args.candidates) if args.candidates else None,
         figures=Path(args.figures) if args.figures else None,
+        angle=Path(args.angle) if args.angle else None,
     )
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

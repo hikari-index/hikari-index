@@ -27,6 +27,18 @@ from typing import Optional
 
 from . import taxonomy
 
+# What the five sizes mean, in film terms (decided 2026-10-07):
+#   extreme-close-up  a detail fills the frame (eyes, a hand, part of an object)
+#   close-up          the face or head fills most of the frame, little or no shoulder
+#   medium            head and shoulders down to about the knees: film's medium
+#                     close-up, medium and medium long (cowboy) shots
+#   wide              the whole figure, from just fitting to plenty of room
+#   extreme-wide      the place dominates; figures tiny or absent
+# Head and shoulders is medium, not close-up. A blind grade of fresh works
+# found it a third of all graded frames and the lanes already called most of
+# them medium; the face sizes of the two overlap (0.20-0.39 of frame area for
+# head and shoulders, 0.17-0.47 for close-ups), so no cut separates them.
+
 #: Face area as a fraction of frame area. Calibrated 2026-07-26 against the
 #: 53 face-lane frames of the reviewed sample (human verdicts):
 #:
@@ -71,15 +83,15 @@ HEAD_FLOOR_VALUE = "wide"
 NEAR_HEAD_CUT = 0.05
 
 #: A lane that reaches a value it cannot defend precisely still routes to a
-#: human. These sit below the protocol's confident band on purpose. The head
-#: lane is a best guess for review, not an answer: on the frames it fills
-#: (the ones every other lane left empty) it agreed with the reviewed sample
-#: on only 3 of 10, the misses being adjacent classes near a cut, a head
-#: found on a hand, a distant head behind a close-up subject and full
-#: figures where medium and wide are arguable; by eye on 36 random fills
-#: about 28 looked right. Its scores sit below the 0.35 the gallery treats
-#: as unsure for scene labels; routing unsure shot-scale labels to Worth a
-#: look is #19.
+#: human. These sit below the protocol's confident band on purpose. On the
+#: frames the head lane fills (the ones every other lane left empty) it
+#: agreed with the July reviewed sample on only 3 of 10; two blind grades of
+#: fresh works (2026-10-07, cuts never fitted on them) found its fills right
+#: on 8 of 11 and 14 of 22 faceless frames, 22 of 33 together; several
+#: misses were head and shoulders called close-up (heads 0.79-0.86 of frame
+#: height). Right two times in three is better than a blank only if it is
+#: marked, so its scores stay below the 0.35 the gallery treats as unsure
+#: and the gallery lists these sizes for review by default.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
 HEAD_BASE_SCORE = 0.30
@@ -188,10 +200,11 @@ def head_opinion(faces, heads) -> Optional[str]:
     head that covers the largest face's center (the same person; the head
     cuts were calibrated on exactly those pairs). None when no head covers
     it. A second opinion only, recorded beside the answer: it never changes
-    it. A weak signal, measured on the gold set's July review: where the
-    face lane answered, it was wrong on 6 of 50 frames whose head agreed
-    and 2 of 10 whose head disagreed; the two disagree on 80 of 648
-    face-lane answers (12%)."""
+    it. On two blind grades of fresh works (2026-10-07, head and shoulders
+    counted as medium) the face's size was wrong on 7 of 15 frames whose
+    head disagreed and 9 of 69 whose head agreed; most of the 7 were head
+    and shoulders the face called close-up. The two disagree on about one
+    face-lane answer in six."""
     if not heads or not faces:
         return None
     box = faces[0].get("box") or []

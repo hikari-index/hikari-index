@@ -80,12 +80,15 @@ function toStill(row, admin = false) {
   };
 }
 
-export const REASON_KINDS = ["text", "rating", "unsure", "scale"];
+export const REASON_KINDS = ["text", "rating", "unsure", "head", "split", "scale"];
 // What Worth a look shows, and the Review page counts, unless asked for
-// more. An unsure shot scale is opt-in: the scenery tag and the head lane
-// score below the cut by design, so it marks a quarter to a half of a work's
-// stills (measured 2026-10-06).
-export const DEFAULT_REASON_KINDS = ["text", "rating", "unsure"];
+// more. A shot size read from a head alone is shown: it is a guess that
+// only beats a blank when it is marked. So is a size the face gave where
+// the same person's head disagrees (wrong about half the time on two blind
+// grades, against one in eight where they agree). Other unsure shot scales are
+// opt-in: the scenery tag scores below the cut by design, so with them a
+// quarter to a half of a work's stills would be listed (measured 2026-10-06).
+export const DEFAULT_REASON_KINDS = ["text", "rating", "unsure", "head", "split"];
 
 // The picked stills with a reason to look, grouped by work in library
 // order. kinds: which reasons count; all: reviewed ones too (the default

@@ -7,8 +7,9 @@ import { reimportAll } from "$lib/server/jobs.js";
 // picks those reasons (without it, the default ones; an unsure shot scale
 // only when asked for); ?all=1 includes reviewed stills.
 export async function load({ url }) {
+  // An absent k means the defaults; an empty one (every chip off) means none.
   const k = url.searchParams.get("k");
-  const kinds = k ? k.split(",").filter((x) => REASON_KINDS.includes(x)) : DEFAULT_REASON_KINDS;
+  const kinds = k === null ? DEFAULT_REASON_KINDS : k.split(",").filter((x) => REASON_KINDS.includes(x));
   const all = url.searchParams.get("all") === "1";
   return { kinds, defaultKinds: DEFAULT_REASON_KINDS, all, ...(await exceptions({ kinds, all })) };
 }

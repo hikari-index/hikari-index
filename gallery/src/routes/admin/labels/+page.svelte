@@ -12,6 +12,9 @@
     palette: "the color measurements",
     mirror: "mirror symmetry",
     "face-position": "where the largest face sits",
+    "head-height": "the height of the largest head (no face found)",
+    "head-position": "where the largest head sits (no face found)",
+    "angle-classifier": "the camera-angle classifier",
     "interior-rule": "an interior with no weather tag",
     "not recorded": "a run from before sources were recorded",
   };
