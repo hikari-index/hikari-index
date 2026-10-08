@@ -4,7 +4,11 @@
   let { data, form } = $props();
   const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", head: "shot size from a head", split: "face and head disagree", scale: "unsure shot scale" };
   // Where a shot scale came from, in words (provenance.fields sources).
-  const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "the tagger's tags", "face-occupancy": "the size of a face" };
+  // A tagger-sourced size lands here (under the usual cut) when two of its
+  // tags pointed to different sizes and the stronger won by a little, or,
+  // on a run with a lowered tag cut, when its one tag was weak; the record
+  // does not say which, so the words cover both.
+  const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "the tagger's tags (two that pointed different ways, or one too weak to trust)", "face-occupancy": "the size of a face" };
   const query = (kinds, all) => {
     const q = new URLSearchParams();
     // The default set needs no k=; any other choice is spelled out.
@@ -58,7 +62,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Shot size from a head</strong> is a suggestion: no face was found, so a size was read from the height of a head. It is not the still's size (and not counted in Techniques) until you press <strong>accept</strong> or set one in edit labels; on fresh works about two suggestions in three were right. <strong>Face and head disagree</strong> marks a size taken from the face where the same person's head points to another; the face's size was wrong about half the time on such frames. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag, or tags that pointed two ways.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Shot size from a head</strong> is a suggestion: no face was found, so a size was read from the height of a head. It is not the still's size (and not counted in Techniques) until you press <strong>accept</strong> or set one in edit labels; on fresh works about two suggestions in three were right. <strong>Face and head disagree</strong> marks a size taken from the size of the face where the same person's head points to another size. The label stays the face's; on fresh works it was wrong on about a third to a half of such stills, against about one in eight elsewhere, mostly head and shoulders called close-up. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag, or tags that pointed two ways.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">

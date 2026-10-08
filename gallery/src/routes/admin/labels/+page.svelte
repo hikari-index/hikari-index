@@ -27,7 +27,7 @@
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Label report</h1>
 <p class="meta intro">
-  How often your review agreed with the machine's labels, on the stills whose labels you marked checked in the still editor. A label left as proposed on a checked still counts as right; one you changed or cleared counts as wrong. Use it to judge a new model or cut-off on stills you have already reviewed before it touches the rest of the library. Shares from fewer than {data.enough} stills are dimmed: too few to re-tune anything on.
+  How often your review agreed with the machine's labels, on the stills whose labels you marked checked in the still editor. A label left as proposed on a checked still counts as right; one you changed or cleared counts as wrong. Use it to judge a new model or cut-off on stills you have already reviewed before it touches the rest of the library. Shares from fewer than {data.enough} stills are dimmed: too few to re-tune anything on. A shot size suggested from a head (no face found) is not a proposal: it is counted on its own line as accepted, changed or left empty, once you mark the labels checked.
 </p>
 
 {#if !data.total}
