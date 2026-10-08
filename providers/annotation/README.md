@@ -101,9 +101,12 @@ of the test set), and changes no other lane's answer. On those fills it
 agreed with the July reviewed sample on only 3 of 10 frames; two blind
 grades of fresh works (shows the cuts were never fitted on) found it right
 on 8 of 11 and 14 of 22 faceless frames it filled, several misses being
-head and shoulders it called close-up. Right two times in three beats a
-blank only when it is marked, so it scores low and the gallery lists these
-sizes for review by default. The same head box gives composition a subject
+head and shoulders it called close-up; a third grade (150 faceless
+stills, 2026-10-08) found it right on 20 of 30, and no classifier or
+second face detector did better on those stills. Right two times in three
+beats a blank only when it is marked, so it scores low and the gallery
+holds these sizes as suggestions, shown with the reason but not asserted
+or counted until a person accepts one. The same head box gives composition a subject
 position where no face was found; there the evidence is strong (its center
 tracks the face center at Pearson 0.978 where both exist).
 

@@ -139,9 +139,10 @@ export function reviewReasons(tagRecord, proposal) {
   // or leave it out apart from the scene labels: on the gold set it would
   // flag about a quarter of stills, most of them from the scenery tag,
   // which review accepted 54 times in 59. A size read from a head alone
-  // (no face) is a kind of its own and shown by default: on a blind grade
-  // of fresh works those were right about two times in three, and a guess
-  // is only better than a blank if someone sees it marked.
+  // (no face) is a kind of its own and shown by default: on three blind
+  // grades of fresh works those were right about two times in three. The
+  // reason IS the suggestion: the import keeps that size out of the facets
+  // (#41), and accepting the reason writes it as the owner's correction.
   const scale = (proposal?.proposal?.scores || []).find((s) => s.family === "shot-scale");
   const field = proposal?.provenance?.fields?.shot_scale;
   if (scale && scale.label !== "abstain" && scale.score < UNSURE_CUT) {
@@ -352,6 +353,13 @@ export async function importWork(workId) {
         const v = dig(labels, path);
         if (v && v !== "abstain") facets[name] = v;
       }
+      // A shot size read from a head alone (no face) is a suggestion, not
+      // the still's size (#41): right about two times in three on three
+      // blind grades of fresh works, and nothing measured does better on
+      // those stills. It stays out of the facets (Techniques, the filters,
+      // the public pages) and rides on the "head" reason below until a
+      // person accepts it, which writes it as their correction.
+      if (facets.shot_scale && (rec.provenance?.fields?.shot_scale?.source ?? rec.provenance?.shot_scale_lane) === "head-height") delete facets.shot_scale;
       const content = labels.content || {};
       tags = [...new Set([...(content.things || []), ...(content.actions || [])])].sort();
     }

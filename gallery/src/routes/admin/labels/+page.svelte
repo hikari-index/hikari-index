@@ -52,6 +52,7 @@
       <p class="meta">
         Proposed on {f.proposed} of {f.checked}: <strong class:few={f.proposed < data.enough}>{pct(f.agreement)}</strong> right, {f.corrected} changed, {f.cleared} cleared.
         No proposal on {f.missed + f.none}{#if f.missed}; you added one on {f.missed}{#if f.filled.length} ({#each f.filled.slice(0, 4) as x, i (x.value)}{i ? ", " : ""}{pretty(x.value)} {x.n}{/each}){/if}{/if}.
+        {#if f.suggested?.n}Suggested from a head (no face) on {f.suggested.n}: accepted {f.suggested.accepted}, changed {f.suggested.changed}, left empty {f.suggested.unanswered}.{/if}
       </p>
       {#if f.values.length}
         <div class="scroll">

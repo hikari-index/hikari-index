@@ -9,7 +9,7 @@ from pathlib import Path
 PROVIDER_ROOT = Path(__file__).resolve().parents[2] / "providers"
 sys.path.insert(0, str(PROVIDER_ROOT))
 
-from annotation.score import load_run, main, score, truth
+from annotation.score import UNANSWERED, load_run, main, score, truth
 
 
 def _run(tmp_path, scale_by_candidate, lane="face-occupancy"):
@@ -57,6 +57,22 @@ def test_candidate_and_reviewed_are_scored_on_the_same_stills(tmp_path):
     assert scale["reviewed"] == {"answered": 2, "right": 1, "missed": 1, "truths": 3}
     assert scale["candidate"] == {"answered": 2, "right": 2, "missed": 1, "truths": 3}
     assert scale["by_value"]["face-occupancy / close-up"]["right"] == 1
+
+
+def test_an_unanswered_suggestion_is_left_out(tmp_path):
+    # The gallery holds a head's shot size as a suggestion (#41): accepted,
+    # it is the owner's value; never answered, it is no judgment at all.
+    work, run = load_run(_run(tmp_path, {"cand-0001": "wide", "cand-0002": "wide"}, lane="head-height"))
+    suggested = {"shot_scale": {"value": "wide", "score": 0.3, "source": "head-height"}}
+    checks = [
+        {"work": work, "candidate": "cand-0001", "machine": {}, "human": {}, "suggested": suggested},
+        {"work": work, "candidate": "cand-0002", "machine": {}, "human": {"shot_scale": "wide"}, "suggested": suggested},
+    ]
+    assert truth(checks[0], "shot_scale") is UNANSWERED
+    assert truth(checks[1], "shot_scale") == "wide"
+    scale = score(checks, {work: run})["families"]["shot_scale"]
+    assert scale["candidate"] == {"answered": 1, "right": 1, "missed": 0, "truths": 1}
+    assert scale["reviewed"] == {"answered": 0, "right": 0, "missed": 1, "truths": 1}
 
 
 def test_the_cli_refuses_a_file_that_is_not_a_download(tmp_path, capsys):

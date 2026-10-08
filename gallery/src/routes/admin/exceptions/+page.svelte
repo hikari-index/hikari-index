@@ -22,7 +22,7 @@
     if (r.k === "rating") return `rating: questionable or explicit at ${r.score}`;
     if (r.k === "unsure") return `unsure scene label: ${r.label.replaceAll("-", " ")} at ${r.score}`;
     if (r.k === "split") return `face and head disagree: ${r.label.replaceAll("-", " ")} from the size of the face, ${r.head.replaceAll("-", " ")} from the size of the head`;
-    if (r.k === "head") return `shot size from a head: ${r.label.replaceAll("-", " ")} at ${r.score}, no face found`;
+    if (r.k === "head") return `shot size from a head: ${r.label.replaceAll("-", " ")} suggested at ${r.score}, no face found; not the still's size until accepted`;
     if (r.k === "scale") return `unsure shot scale: ${r.label.replaceAll("-", " ")} at ${r.score}${FROM[r.source] ? `, from ${FROM[r.source]}` : ""}`;
     return r.k;
   }
@@ -58,7 +58,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Shot size from a head</strong> marks a size guessed from the height of a head where no face was found; on fresh works about two in three were right. <strong>Face and head disagree</strong> marks a size taken from the face where the same person's head points to another; the face's size was wrong about half the time on such frames. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag, or tags that pointed two ways.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Shot size from a head</strong> is a suggestion: no face was found, so a size was read from the height of a head. It is not the still's size (and not counted in Techniques) until you press <strong>accept</strong> or set one in edit labels; on fresh works about two suggestions in three were right. <strong>Face and head disagree</strong> marks a size taken from the face where the same person's head points to another; the face's size was wrong about half the time on such frames. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag, or tags that pointed two ways.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">
@@ -111,6 +111,18 @@
               <input type="hidden" name="flag" value="excluded" />
               <button name="value" value={s.excluded ? "0" : "1"}>{s.excluded ? "show" : "hide"}</button>
             </form>
+            {#if s.suggested?.shot_scale}
+              {#if s.human.facets.shot_scale !== undefined}
+                <span class="state">shot size set: {s.human.facets.shot_scale ? s.human.facets.shot_scale.replaceAll("-", " ") : "none"}</span>
+              {:else}
+                <form method="POST" action={action("accept")} use:enhance={afterAction}>
+                  <input type="hidden" name="id" value={s.id} />
+                  <input type="hidden" name="family" value="shot_scale" />
+                  <input type="hidden" name="value" value={s.suggested.shot_scale.value} />
+                  <button>accept {s.suggested.shot_scale.value.replaceAll("-", " ")}</button>
+                </form>
+              {/if}
+            {/if}
             <a class="edit" href={`/admin/stills/${s.id}`}>edit labels</a>
           </div>
         </li>

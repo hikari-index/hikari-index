@@ -44,11 +44,21 @@ PATHS = {
 ENOUGH = 20
 
 
-def truth(check: dict, family: str) -> Optional[str]:
+#: A label the gallery only suggested (a shot size from a head, #41) and
+#: the owner neither accepted nor replaced: no judgment either way, so the
+#: still is left out of that family's scoring. "Left as proposed" cannot
+#: apply, because nothing was proposed.
+UNANSWERED = object()
+
+
+def truth(check: dict, family: str):
     human = check.get("human") or {}
     if family in human:
         return human[family] or None
-    return (check.get("machine") or {}).get(family) or None
+    machine = (check.get("machine") or {}).get(family) or None
+    if machine is None and family in (check.get("suggested") or {}):
+        return UNANSWERED
+    return machine
 
 
 def _label(labels: dict, family: str) -> Optional[str]:
@@ -117,6 +127,8 @@ def score(checks: Iterable[dict], runs: dict[str, dict[str, dict]]) -> dict:
         matched += 1
         for family in FAMILIES:
             expected = truth(check, family)
+            if expected is UNANSWERED:
+                continue
             _add(result[family]["reviewed"],
                  (check.get("machine") or {}).get(family) or None, expected)
             value, source = record[family]

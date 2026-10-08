@@ -40,8 +40,20 @@ const share = (n, d) => (d ? n / d : null);
 export function summarize(checks) {
   const families = [];
   for (const family of REPORT_FAMILIES) {
-    const f = { family, checked: 0, proposed: 0, agreed: 0, corrected: 0, cleared: 0, missed: 0, none: 0, sources: new Map(), values: new Map(), filled: new Map() };
+    const f = { family, checked: 0, proposed: 0, agreed: 0, corrected: 0, cleared: 0, missed: 0, none: 0, sources: new Map(), values: new Map(), filled: new Map(),
+      // A label suggested, not proposed (#41: a shot size from a head): the
+      // owner's value says accepted or changed; no value says nothing, since
+      // an unaccepted suggestion is not a cleared one.
+      suggested: { n: 0, accepted: 0, changed: 0, unanswered: 0 } };
     for (const check of checks) {
+      const sug = !check.machine?.[family] && check.suggested?.[family]?.value;
+      if (sug) {
+        f.suggested.n += 1;
+        const human = check.human ?? {};
+        if (!(family in human) || human[family] == null) f.suggested.unanswered += 1;
+        else if (human[family] === sug) f.suggested.accepted += 1;
+        else f.suggested.changed += 1;
+      }
       const o = outcome(check, family);
       f.checked += 1;
       f[o.kind] += 1;
@@ -76,6 +88,7 @@ export function summarize(checks) {
         .map((v) => ({ ...v, agreement: share(v.agreed, v.n), to: [...v.to].sort((a, b) => b[1] - a[1]).map(([value, n]) => ({ value, n })) }))
         .sort((a, b) => a.source.localeCompare(b.source) || byCount(a, b)),
       filled: [...f.filled].sort((a, b) => b[1] - a[1]).map(([value, n]) => ({ value, n })),
+      suggested: f.suggested,
     });
   }
   return families;
