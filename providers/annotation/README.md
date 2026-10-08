@@ -98,11 +98,12 @@ head height ordered with face size (Spearman 0.95), and the cuts reproduced
 the face lane's class on 83-86% of frames from works they were not fitted
 on. It comes last, so it only fills frames the other lanes left empty (14%
 of the test set), and changes no other lane's answer. On those fills it
-agreed with the July reviewed sample on only 3 of 10 frames; a blind grade
-of fresh works (shows the cuts were never fitted on) found it right on 8 of
-11 faceless frames it filled, two misses being head and shoulders it called
-close-up. It still scores low, so
-its answers reach review, until a second sample agrees. The same head box gives composition a subject
+agreed with the July reviewed sample on only 3 of 10 frames; two blind
+grades of fresh works (shows the cuts were never fitted on) found it right
+on 8 of 11 and 14 of 22 faceless frames it filled, several misses being
+head and shoulders it called close-up. Right two times in three beats a
+blank only when it is marked, so it scores low and the gallery lists these
+sizes for review by default. The same head box gives composition a subject
 position where no face was found; there the evidence is strong (its center
 tracks the face center at Pearson 0.978 where both exist).
 

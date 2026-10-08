@@ -85,12 +85,13 @@ NEAR_HEAD_CUT = 0.05
 #: A lane that reaches a value it cannot defend precisely still routes to a
 #: human. These sit below the protocol's confident band on purpose. On the
 #: frames the head lane fills (the ones every other lane left empty) it
-#: agreed with the July reviewed sample on only 3 of 10; a blind grade of
+#: agreed with the July reviewed sample on only 3 of 10; two blind grades of
 #: fresh works (2026-10-07, cuts never fitted on them) found its fills right
-#: on 8 of 11 faceless frames; two misses were head and shoulders called
-#: close-up (heads 0.79 and 0.82 of frame height). Its scores stay below
-#: the 0.35 the gallery treats as unsure for scene labels until a second
-#: sample agrees; routing unsure shot-scale labels to Worth a look is #19.
+#: on 8 of 11 and 14 of 22 faceless frames, 22 of 33 together; several
+#: misses were head and shoulders called close-up (heads 0.79-0.86 of frame
+#: height). Right two times in three is better than a blank only if it is
+#: marked, so its scores stay below the 0.35 the gallery treats as unsure
+#: and the gallery lists these sizes for review by default.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
 HEAD_BASE_SCORE = 0.30
