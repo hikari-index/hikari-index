@@ -201,12 +201,17 @@ export async function jobsOverview() {
     ready: lines.get(cap)?.ready.length ?? 0,
   }));
   // A work can be re-run from its newest chain once nothing of it is open.
+  // "Newest" counts chains that committed something: a chain that never
+  // ran (a cancelled re-run, #44) is newer than the finished chain it was
+  // meant to replace and must not shadow it, or the work loses its Re-run
+  // button and "Re-run every finished work" skips it.
   const newest = new Map();
   const openWork = new Set();
   const discarded = new Set();
   for (const r of rows) {
     if (OPEN.includes(r.state)) openWork.add(r.workId);
     if (discardedWork(r)) discarded.add(r.workId);
+    if (r.state !== "committed") continue;
     const t = new Date(r.createdAt).getTime();
     if (!newest.has(r.workId) || t > newest.get(r.workId).t) newest.set(r.workId, { t, chainId: r.chainId });
   }
