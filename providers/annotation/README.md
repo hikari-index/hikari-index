@@ -178,19 +178,19 @@ sample landed in it.
 
 ### Re-fitting a cut-off from reviews
 
-Admin → Labels exports every checked label with the source that proposed
-it, and `python -m annotation.score` scores a run against that export, so a
+Admin → Labels exports every checked still's labels, with the source
+that proposed each where the run recorded one, and `python -m annotation.score` scores a run against that export, so a
 cut-off can be re-fitted from reviewed stills. A shipped cut-off reaches
 everyone who installs the tool, so it changes only when:
 
-- the new value serves the written definitions (the shot sizes in
-  `shot_scale.py`), not one reviewer's taste; where the two differ, the
-  definition is changed on purpose or the default stays;
+- the new value serves the label's written definition, not one
+  reviewer's taste; where the two differ, the definition is changed on
+  purpose or the default stays;
 - it holds on works it was not fitted on, ideally graded blind by a second
   person;
 - it is not fitted only to stills reached through a review reason. Those
-  are mostly errors by design: good for finding where a cut sits wrong,
-  misleading as an accuracy figure.
+  were picked for doubt, not at random: good for finding where a cut sits
+  wrong, misleading as an accuracy figure.
 
 One install's corrections change that install's stills and nothing else.
 
