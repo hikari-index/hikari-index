@@ -9,7 +9,7 @@
     const q = new URLSearchParams();
     // The default set needs no k=; any other choice is spelled out.
     const isDefault = kinds.length === data.defaultKinds.length && data.defaultKinds.every((k) => kinds.includes(k));
-    if (kinds.length && !isDefault) q.set("k", kinds.join(","));
+    if (!isDefault) q.set("k", kinds.join(","));
     if (all) q.set("all", "1");
     const s = q.toString();
     return `/admin/exceptions${s ? `?${s}` : ""}`;
