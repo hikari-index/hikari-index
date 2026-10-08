@@ -89,9 +89,11 @@ NEAR_HEAD_CUT = 0.05
 #: fresh works (2026-10-07, cuts never fitted on them) found its fills right
 #: on 8 of 11 and 14 of 22 faceless frames, 22 of 33 together; several
 #: misses were head and shoulders called close-up (heads 0.79-0.86 of frame
-#: height). Right two times in three is better than a blank only if it is
-#: marked, so its scores stay below the 0.35 the gallery treats as unsure
-#: and the gallery lists these sizes for review by default.
+#: height); a third grade of 150 faceless stills (2026-10-08) found 20 of
+#: 30, and nothing measured beat it there. Right two times in three is
+#: better than a blank only if it is marked, so its scores stay below the
+#: 0.35 the gallery treats as unsure, and the gallery holds these sizes as
+#: suggestions (shown, not asserted or counted) until a person accepts one.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
 HEAD_BASE_SCORE = 0.30

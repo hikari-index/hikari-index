@@ -73,7 +73,7 @@ export const actions = {
     // proposed is agreement. Saved as a snapshot of what was judged (the
     // accuracy report); unticked, the mark comes off.
     const labelCheck = checked
-      ? { at: new Date().toISOString(), run: still.machine.run, machine: still.machine.facets, sources: still.machine.sources, human: facetsHuman }
+      ? { at: new Date().toISOString(), run: still.machine.run, machine: still.machine.facets, sources: still.machine.sources, human: facetsHuman, suggested: still.suggested }
       : still.labelCheck ? null : undefined;
     const saved = await setCorrections(id, {
       facetsHuman: Object.keys(facetsHuman).length ? facetsHuman : null,

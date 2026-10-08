@@ -47,6 +47,14 @@ function fromRow(r) {
   };
 }
 
+// {family: {value, score, source}} from the reasons that carry a suggested
+// label; today only the head's shot size.
+function suggestedOf(reasons) {
+  const out = {};
+  for (const r of reasons ?? []) if (r.k === "head" && r.label) out.shot_scale = { value: r.label, score: r.score ?? null, source: "head-height" };
+  return out;
+}
+
 function toStill(row, admin = false) {
   const still = {
     id: row.id,
@@ -71,6 +79,9 @@ function toStill(row, admin = false) {
     locked: row.locked,
     excluded: row.excluded,
     reasons: row.reviewReasons ?? [],
+    // Labels proposed as a suggestion only (#41): a shot size from a head
+    // where no face was found. Not a facet until accepted.
+    suggested: suggestedOf(row.reviewReasons),
     // The sibling works this frame repeats in (repeats.js); a mark only.
     repeatIn: row.repeatIn ?? [],
     // The owner's "labels checked" snapshot (accuracy.js), or null.
@@ -620,6 +631,17 @@ export async function setCorrections(id, { facetsHuman, tagsHuman, note, labelCh
   if (labelCheck !== undefined) set.labelCheck = labelCheck;
   const rows = await db().update(stillsTable).set(set).where(eq(stillsTable.id, id)).returning({ id: stillsTable.id });
   return rows.length > 0;
+}
+
+// Accept a suggested label (#41): written as the owner's correction, beside
+// any others, so the still shows and counts it from now on. The reason
+// stays; the page reads the accepted value beside it. Returns whether the
+// still was still there.
+export async function acceptSuggestion(id, family, value) {
+  const rows = await db().execute(sql`update stills
+    set facets_human = coalesce(facets_human, '{}'::jsonb) || jsonb_build_object(${family}::text, ${value}::text), reviewed_at = now()
+    where id = ${id} returning id`);
+  return rows.rows.length > 0;
 }
 
 // Every distinct value seen per family, machine or human, for the editor's

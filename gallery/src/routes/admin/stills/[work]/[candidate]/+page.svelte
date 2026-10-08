@@ -122,10 +122,12 @@
         {@const machine = s.machine.facets[family]}
         {@const human = family in s.human.facets ? s.human.facets[family] : undefined}
         {@const chosen = facetValue(family, human)}
+        {@const suggested = !machine && s.suggested?.[family] ? s.suggested[family] : null}
         <label class="row">
           <span class="name">{pretty(family)}</span>
           <select name={`facet:${family}`}>
-            <option value="__proposed" selected={chosen === "__proposed"}>as proposed{machine ? `: ${pretty(machine)}` : ": (none)"}</option>
+            <option value="__proposed" selected={chosen === "__proposed"}>as proposed{machine ? `: ${pretty(machine)}` : suggested ? `: (none; a head suggests ${pretty(suggested.value)})` : ": (none)"}</option>
+            {#if suggested}<option value={suggested.value} selected={chosen === suggested.value}>accept the suggestion: {pretty(suggested.value)} (from a head, no face found)</option>{/if}
             <option value="__none" selected={chosen === "__none"}>none</option>
             {#each values as val (val)}
               <option value={val} selected={chosen === val}>{pretty(val)}</option>
