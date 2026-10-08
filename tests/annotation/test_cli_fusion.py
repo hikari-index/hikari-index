@@ -69,3 +69,10 @@ def test_a_missing_result_file_is_not_fatal(tmp_path):
     doc = emit(bundle, results, "provider-fused", "config-default", "run-test",
                tags=tmp_path / "absent.json")
     assert doc["proposals"][0]["proposal"]["labels"]["setting_time_weather"]["setting"] == "abstain"
+
+
+def test_the_run_records_the_allowlist_version(tmp_path):
+    from annotation.wd_labels import load
+    bundle, results = _bundle(tmp_path)
+    doc = emit(bundle, results, "provider-fused", "config-default", "run-test")
+    assert doc["allowlist_version"] == load().version

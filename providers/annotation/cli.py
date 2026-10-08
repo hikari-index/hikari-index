@@ -133,6 +133,10 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
         "schema_version": "1.0",
         "protocol_version": taxonomy.PROTOCOL_VERSION,
         "taxonomy_version": taxonomy.TAXONOMY_VERSION,
+        # Which tag-to-label mapping produced these labels: a new allowlist
+        # changes labels with no code or model change. A note for whoever
+        # reads the run later; nothing refuses a run on it.
+        "allowlist_version": allowlist.version,
         "bundle_id": manifest["bundle_id"],
         "run_ref": run_ref,
         "configuration": {
