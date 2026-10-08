@@ -118,6 +118,7 @@
                 <form method="POST" action={action("accept")} use:enhance={afterAction}>
                   <input type="hidden" name="id" value={s.id} />
                   <input type="hidden" name="family" value="shot_scale" />
+                  <input type="hidden" name="value" value={s.suggested.shot_scale.value} />
                   <button>accept {s.suggested.shot_scale.value.replaceAll("-", " ")}</button>
                 </form>
               {/if}

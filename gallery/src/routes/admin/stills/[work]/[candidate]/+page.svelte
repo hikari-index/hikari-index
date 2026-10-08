@@ -24,7 +24,9 @@
     const y = Object.entries(b ?? {}).filter(([, val]) => val);
     return x.length === y.length && x.every(([k, val]) => (b ?? {})[k] === val);
   };
-  const checkStale = $derived(!!s.labelCheck && !sameLabels(s.labelCheck.machine, s.machine.facets));
+  // Suggestions (#41) count as labels here: a changed suggestion makes the mark stale too.
+  const suggestedValues = (x) => Object.fromEntries(Object.entries(x ?? {}).map(([k, val]) => [k, val?.value]));
+  const checkStale = $derived(!!s.labelCheck && !(sameLabels(s.labelCheck.machine, s.machine.facets) && sameLabels(suggestedValues(s.labelCheck.suggested), suggestedValues(s.suggested))));
   const labelsChecked = $derived(v ? v.labels_checked === "on" : !!s.labelCheck && !checkStale);
   // Changing a label means it was looked at: tick the mark. On input, not
   // change, so a correction typed and saved with Ctrl+Enter still ticks it.
@@ -34,7 +36,7 @@
   }
   // Which machine labels this page shows; a checked save is refused if a
   // re-run changed them since (the mark would certify labels never seen).
-  const labelsSeen = $derived(JSON.stringify(Object.entries(s.machine.facets).sort()));
+  const labelsSeen = $derived(JSON.stringify([Object.entries(s.machine.facets).sort(), Object.entries(s.suggested ?? {}).map(([k, x]) => [k, x.value]).sort()]));
 
   // Unsaved edits are guarded on every way out: the arrow keys, the links,
   // the browser's own back and close. A submit clears the guard first.

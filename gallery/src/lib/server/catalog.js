@@ -635,12 +635,13 @@ export async function setCorrections(id, { facetsHuman, tagsHuman, note, labelCh
 
 // Accept a suggested label (#41): written as the owner's correction, beside
 // any others, so the still shows and counts it from now on. The reason
-// stays; the page reads the accepted value beside it. Returns whether the
-// still was still there.
+// stays; the page reads the accepted value beside it. Never over a value
+// the owner already set for that family (null included: "none" is a
+// judgment). Returns whether anything was written.
 export async function acceptSuggestion(id, family, value) {
   const rows = await db().execute(sql`update stills
     set facets_human = coalesce(facets_human, '{}'::jsonb) || jsonb_build_object(${family}::text, ${value}::text), reviewed_at = now()
-    where id = ${id} returning id`);
+    where id = ${id} and not (coalesce(facets_human, '{}'::jsonb) ? ${family}::text) returning id`);
   return rows.rows.length > 0;
 }
 

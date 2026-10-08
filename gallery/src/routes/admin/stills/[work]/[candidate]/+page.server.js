@@ -64,7 +64,10 @@ export const actions = {
     // A checked save certifies the labels the page showed; refuse it, before
     // anything is written, if a re-run has changed them since.
     const checked = form.get("labels_checked") === "on";
-    const seen = JSON.stringify(Object.entries(still.machine.facets).sort());
+    // The machine's labels and the suggestions beside them (#41): a checked
+    // save certifies both, so a re-run that changed only a suggestion
+    // refuses the stale form too.
+    const seen = JSON.stringify([Object.entries(still.machine.facets).sort(), Object.entries(still.suggested ?? {}).map(([k, x]) => [k, x.value]).sort()]);
     if (checked && String(form.get("labels_seen") ?? "") !== seen) {
       // The tick comes back off: it was given on labels no longer shown.
       return fail(409, { message: "The machine's labels changed since this page was opened (the work was re-run). Nothing was saved. Look at the labels again, then tick \"Labels checked\" and save.", values: { ...values(), labels_checked: "" } });

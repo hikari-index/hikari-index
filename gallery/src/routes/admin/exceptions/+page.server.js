@@ -33,16 +33,19 @@ export const actions = {
     if (!(await setFlag(id, flag, form.get("value") === "1"))) return fail(409, { message: "That frame has no web image yet and this work's extra frames were discarded, so a lock could never be brought in by a re-run." });
     return { ok: true };
   },
-  // Accept a suggested label (#41): only a value the still's own reason
-  // suggests, so the form cannot write an arbitrary size.
+  // Accept a suggested label (#41): the value the button showed, and only
+  // while the still's own reason still suggests it (a re-run in between
+  // may have changed it) and no size has been set on the still since.
   accept: async ({ request }) => {
     const form = await request.formData();
     const id = String(form.get("id") ?? "");
     const family = String(form.get("family") ?? "");
+    const value = String(form.get("value") ?? "");
     const still = id.includes("/") ? await stillById(id, { admin: true }) : null;
     const suggested = still?.suggested?.[family];
     if (!suggested) return fail(400, { message: "nothing suggested for that still" });
-    if (!(await acceptSuggestion(id, family, suggested.value))) return fail(404, { message: "That still is gone: a re-run removed it." });
+    if (suggested.value !== value) return fail(409, { message: `Not accepted: the suggestion is now ${suggested.value.replaceAll("-", " ")}, not ${value.replaceAll("-", " ")} (the work was re-run). Look again.` });
+    if (!(await acceptSuggestion(id, family, value))) return fail(409, { message: "Not accepted: a size was set on this still since this page loaded, or a re-run removed it. Reload." });
     return { ok: true };
   },
   // Read every work's run records again (the reasons were added after
