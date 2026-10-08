@@ -2,7 +2,7 @@
   import { enhance } from "$app/forms";
   import { formatTime, mediaUrl, placeholder } from "$lib/format.js";
   let { data, form } = $props();
-  const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", scale: "unsure shot scale" };
+  const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", head: "shot size from a head", scale: "unsure shot scale" };
   // Where a shot scale came from, in words (provenance.fields sources).
   const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "the tagger's tags", "face-occupancy": "the size of a face" };
   const query = (kinds, all) => {
@@ -21,6 +21,7 @@
     if (r.k === "text") return `text: ${r.tags.map((t) => t.replaceAll("_", " ")).join(", ")}`;
     if (r.k === "rating") return `rating: questionable or explicit at ${r.score}`;
     if (r.k === "unsure") return `unsure scene label: ${r.label.replaceAll("-", " ")} at ${r.score}`;
+    if (r.k === "head") return `shot size from a head: ${r.label.replaceAll("-", " ")} at ${r.score}, no face found`;
     if (r.k === "scale") return `unsure shot scale: ${r.label.replaceAll("-", " ")} at ${r.score}${FROM[r.source] ? `, from ${FROM[r.source]}` : ""}`;
     return r.k;
   }
@@ -56,7 +57,7 @@
 
 <nav class="crumbs"><a href="/admin">← Review</a></nav>
 <h1>Worth a look</h1>
-<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag or from the size of a head, or tags that pointed two ways; often a quarter to a half of a work's stills.</p>
+<p class="meta intro">The picked stills the run records give a reason to check: text on the frame (credits, cards, subtitles), a rating the tagger did not call general, or a scene label proposed below the usual cut. Scene labels not listed here were proposed with the confidence review accepted nine times in ten; for other labels, not being listed here is no promise they are right. Reasons are evidence, not verdicts: a card is a still like any other until you cull or hide it. <strong>Shot size from a head</strong> marks a size guessed from the height of a head where no face was found; on fresh works about two in three were right. <strong>Unsure shot scale</strong> is off until you pick it: shot sizes guessed from the scenery tag, or tags that pointed two ways.</p>
 
 <div class="top">
   <p class="filters" role="group" aria-label="Reasons">

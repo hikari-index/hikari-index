@@ -138,11 +138,14 @@ export function reviewReasons(tagRecord, proposal) {
   // head lane score there by design. Its own kind, so Worth a look can show
   // or leave it out apart from the scene labels: on the gold set it would
   // flag about a quarter of stills, most of them from the scenery tag,
-  // which review accepted 54 times in 59.
+  // which review accepted 54 times in 59. A size read from a head alone
+  // (no face) is a kind of its own and shown by default: on a blind grade
+  // of fresh works those were right about two times in three, and a guess
+  // is only better than a blank if someone sees it marked.
   const scale = (proposal?.proposal?.scores || []).find((s) => s.family === "shot-scale");
   if (scale && scale.label !== "abstain" && scale.score < UNSURE_CUT) {
     const source = proposal.provenance?.fields?.shot_scale?.source ?? proposal.provenance?.shot_scale_lane ?? null;
-    out.push({ k: "scale", label: scale.label, score: Math.round(scale.score * 100) / 100, source });
+    out.push({ k: source === "head-height" ? "head" : "scale", label: scale.label, score: Math.round(scale.score * 100) / 100, source });
   }
   return out;
 }
