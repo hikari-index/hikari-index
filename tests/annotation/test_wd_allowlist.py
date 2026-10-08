@@ -300,3 +300,11 @@ class TestPeopleCounting:
         girls = from_predictions({"3girls": 0.9}, ALLOWLIST)
         boys = from_predictions({"3boys": 0.9}, ALLOWLIST)
         assert girls.value("people") == boys.value("people") == "small-group"
+
+
+def test_eye_focus_names_an_extreme_close_up():
+    """eye_focus over the cut reads extreme-close-up, and beats a weaker
+    close-up tag on the same frame (#19)."""
+    labels = from_predictions({"eye_focus": 0.9, "close-up": 0.6}, ALLOWLIST)
+    assert labels.value("shot_scale") == "extreme-close-up"
+    assert from_predictions({"close-up": 0.6}, ALLOWLIST).value("shot_scale") == "close-up"

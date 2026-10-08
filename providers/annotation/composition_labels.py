@@ -37,6 +37,8 @@ CARD_MAX_ENTROPY = 3.0
 # Confidence for a geometry-derived proposal. Deliberately below the palette
 # families: this is a measurement of the picture, not an assertion about intent.
 GEOMETRY_SCORE = 0.6
+# The same rules from a head box where no face was found (see resolve).
+HEAD_SCORE = 0.5
 
 
 @dataclass(frozen=True)
@@ -47,7 +49,7 @@ class CompositionVerdict:
 
 
 def _subject_x(faces: Optional[Sequence[dict]], width: int) -> Optional[float]:
-    """Horizontal centre of the LARGEST face, in 0..1.
+    """Horizontal center of the LARGEST box (a face, or a head), in 0..1.
 
     Not the area-weighted centroid of every face: on a two-shot that lands in
     the gap between two subjects and reads as `centered` when neither subject is
@@ -77,6 +79,7 @@ def resolve(
     text_present: bool = False,
     faces: Optional[Sequence[dict]] = None,
     frame_width: int = 0,
+    heads: Optional[Sequence[dict]] = None,
 ) -> CompositionVerdict:
     """One composition value, or `abstain`.
 
@@ -92,16 +95,24 @@ def resolve(
     if is_symmetrical:
         return CompositionVerdict("symmetrical", GEOMETRY_SCORE, "mirror")
 
-    x = _subject_x(faces, frame_width)
+    x, score, basis = _subject_x(faces, frame_width), GEOMETRY_SCORE, "face-position"
     if x is None:
-        # No face means no subject position. Four estimators were measured
-        # against face-box position and the best gained +2.5pp over the majority
-        # baseline on the hardest title while labelling title cards `centered`.
-        # Abstaining is the honest answer, not a placeholder.
+        # No face: the largest head, from the anime head detector, which sees
+        # the back of a head and a profile. Its center tracks the face center
+        # at Pearson 0.978 on the 852 gold-set frames that have both (the best
+        # non-model estimator reached 0.689 and lost), and these rules give
+        # the same value from either on 82% of them; the rest sit near a
+        # tolerance edge. Scored below the face rule for that.
+        x, score, basis = _subject_x(heads, frame_width), HEAD_SCORE, "head-position"
+    if x is None:
+        # No face and no head means no subject position. Four estimators were
+        # measured against face-box position and the best gained +2.5pp over
+        # the majority baseline on the hardest title while labelling title
+        # cards `centered`. Abstaining is the honest answer, not a placeholder.
         return CompositionVerdict("abstain", 0.0, "no-subject-signal")
 
     if abs(x - 0.5) <= CENTRE_TOLERANCE:
-        return CompositionVerdict("centered", GEOMETRY_SCORE, "face-position")
+        return CompositionVerdict("centered", score, basis)
     if min(abs(x - 1 / 3), abs(x - 2 / 3)) <= THIRDS_TOLERANCE:
-        return CompositionVerdict("rule-of-thirds", GEOMETRY_SCORE, "face-position")
-    return CompositionVerdict("asymmetrical", GEOMETRY_SCORE, "face-position")
+        return CompositionVerdict("rule-of-thirds", score, basis)
+    return CompositionVerdict("asymmetrical", score, basis)

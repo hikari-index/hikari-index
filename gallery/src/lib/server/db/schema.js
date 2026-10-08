@@ -73,6 +73,10 @@ export const works = pgTable("works", {
   // differs from the current set, the gallery matches the work again
   // (lib/server/repeats.js, ADR-0012).
   repeatsKey: text("repeats_key"),
+  // What made this work's labels, from the analyze record's proposals
+  // (taxonomy, tagger allowlist, fusion version and cut-offs). Copied into
+  // a still's label check so the accuracy report can tell runs apart.
+  labelsRun: jsonb("labels_run").$type(),
   importedAt: timestamp("imported_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -108,13 +112,27 @@ export const stills = pgTable("stills", {
   // (or null to clear a machine value); tagsHuman is {add: [], remove: []}.
   facetsHuman: jsonb("facets_human").$type(),
   tagsHuman: jsonb("tags_human").$type(),
+  // Which signal proposed each machine facet and its score, from the run:
+  // {family: {s: "face-occupancy", p: 0.42}}. Null for runs made before
+  // fusion recorded it.
+  facetSources: jsonb("facet_sources").$type(),
+  // The work's labels_run as of the import that wrote these facets, kept
+  // on the still so a label check always pairs labels with what made them.
+  labelsRun: jsonb("labels_run").$type(),
+  // The owner's "labels checked" mark: every label of the still was looked
+  // at, so what was left as proposed counts as agreement. A snapshot taken
+  // at that save, so a later re-import or edit does not change what was
+  // judged: {at, run, machine: {family: value}, sources, human: {family:
+  // value|null}}. Null when unchecked. The accuracy report reads these.
+  labelCheck: jsonb("label_check").$type(),
   // Review state, the reason this table exists:
   //   unreviewed | kept | culled   (culled = credits, cards, junk the human removed)
   // Reasons to look at this still before the rest (research/03 "review
   // only threshold/disagreement/sensitive exceptions"), set by import from
   // the run records: [{k: "text", tags}, {k: "rating", score}, {k: "unsure",
-  // label, score}]. Empty for most stills; the Worth-a-look page lists the
-  // rest.
+  // label, score}, {k: "head" | "scale", label, score, source},
+  // {k: "split", label, score, head}]. Empty for most
+  // stills; the Worth-a-look page lists the rest.
   reviewReasons: jsonb("review_reasons").$type().notNull().default([]),
   // The other works of the same Shoko series this frame repeats in (an
   // opening, an ending, a logo, a reused cut), as work ids; found by

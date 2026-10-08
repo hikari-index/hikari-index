@@ -14,9 +14,10 @@ from pathlib import Path
 from typing import Optional
 
 from . import taxonomy
+from .shot_scale import HEAD_CUTS
 from .palette_labels import from_descriptor
 from .proposal import (CandidateEvidence, build_proposal, coverage,
-                       shot_scale_lane)
+                       field_sources, shot_scale_lane)
 from .wd_labels import (DEFAULT_SCENE_THRESHOLD, from_predictions,
                         load as load_allowlist)
 
@@ -49,7 +50,9 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
          coverage_audit: Optional[Path] = None,
          tag_threshold: float = 0.35,
          scene_tag_threshold: Optional[float] = None,
-         candidates: Optional[Path] = None) -> dict:
+         candidates: Optional[Path] = None,
+         figures: Optional[Path] = None,
+         angle: Optional[Path] = None) -> dict:
     """`candidates` stands in for the bundle manifest: JSON `{"bundle_id",
     "candidates": [{"candidate_id", "shot_id", "width", "frame_quality"}]}`
     naming frames outside the bundle (the picked surplus, labeled after the
@@ -59,6 +62,8 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
     allowlist = load_allowlist()
     tags_by_candidate = _by_candidate(tags)
     faces_by_candidate = _by_candidate(faces)
+    figures_by_candidate = _by_candidate(figures)
+    angle_by_candidate = _by_candidate(angle)
     # Composition geometry is read from the run's own audit file, where the
     # extraction stage writes it.
     quality_by_candidate = {}
@@ -94,6 +99,9 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
         # geometry, and composition simply abstains for it rather than failing.
         geometry = (quality_by_candidate.get(candidate_id)
                     or candidate.get("frame_quality") or {})
+        # Head boxes (optional, like faces): shot scale and composition use
+        # the largest one only where no face answered.
+        heads = tuple((figures_by_candidate.get(candidate_id) or {}).get("heads", ()))
         evidence = CandidateEvidence(
             candidate_id=candidate_id,
             shot_id=candidate["shot_id"],
@@ -107,6 +115,11 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
             entropy=geometry.get("entropy"),
             faces=tuple(face_entry.get("faces", ())) if face_entry else (),
             frame_width=int(candidate.get("width") or 0),
+            heads=heads,
+            head_height=heads[0].get("height_fraction") if heads else None,
+            camera_angle=((angle_by_candidate[candidate_id]["angle"],
+                           angle_by_candidate[candidate_id]["score"])
+                          if candidate_id in angle_by_candidate else None),
         )
         try:
             proposal = build_proposal(
@@ -126,7 +139,8 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
         proposals.append({
             "candidate_id": evidence.candidate_id,
             "shot_id": evidence.shot_id,
-            "provenance": {"shot_scale_lane": shot_scale_lane(evidence)},
+            "provenance": {"shot_scale_lane": shot_scale_lane(evidence),
+                           "fields": field_sources(evidence)},
             "proposal": proposal,
         })
     return {
@@ -144,6 +158,9 @@ def emit(bundle: Optional[Path], results: Path, provider_id: str,
             "scene_tag_threshold": (scene_tag_threshold
                                     if scene_tag_threshold is not None
                                     else tag_threshold),
+            # The head lane's height cuts, so a run says which made its
+            # head-lane labels (informational; nothing refuses on it).
+            "head_cuts": [cut for cut, _ in HEAD_CUTS],
         },
         "coverage": coverage([p["proposal"] for p in proposals]),
         "content_coverage": _content_coverage(proposals),
@@ -191,6 +208,13 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser.add_argument("--faces",
                         help="face-detector result-manifest.json; people fuses "
                              "face boxes with tagger counts when given")
+    parser.add_argument("--figures",
+                        help="head and figure detector result-manifest.json; "
+                             "shot scale and composition use the largest head "
+                             "where no face answered")
+    parser.add_argument("--angle",
+                        help="camera-angle classifier result-manifest.json; "
+                             "angle comes from it, not the tagger, when given")
     parser.add_argument("--shot-coverage",
                         help="the run's audit/shot-coverage.json; supplies the "
                              "composition geometry measured at extraction. "
@@ -221,6 +245,8 @@ def main(argv: Optional[list[str]] = None) -> int:
         tag_threshold=args.tag_threshold,
         scene_tag_threshold=args.scene_tag_threshold,
         candidates=Path(args.candidates) if args.candidates else None,
+        figures=Path(args.figures) if args.figures else None,
+        angle=Path(args.angle) if args.angle else None,
     )
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

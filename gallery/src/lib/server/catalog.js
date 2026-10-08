@@ -8,6 +8,7 @@ import { and, asc, cosineDistance, eq, getTableColumns, isNotNull, sql } from "d
 import { db, schema } from "$lib/server/db/index.js";
 import { shownEpisodeTitle } from "$lib/titles.js";
 import { cullableRepeats } from "./repeats.js";
+import { REPORT_FAMILIES } from "./accuracy.js";
 
 const { works: worksTable, stills: stillsTable, franchises: franchisesTable, seasons: seasonsTable } = schema;
 
@@ -42,6 +43,7 @@ function fromRow(r) {
     source: r.source, selected: r.selected, facets: r.facets, tags: r.tags, tiers: r.tiers, palette: r.palette,
     facetsHuman: r.facets_human, tagsHuman: r.tags_human, reviewState: r.review_state, locked: r.locked,
     excluded: r.excluded, reviewNote: r.review_note, reviewReasons: r.review_reasons, repeatIn: r.repeat_in,
+    facetSources: r.facet_sources, labelsRun: r.labels_run, labelCheck: r.label_check,
   };
 }
 
@@ -62,7 +64,7 @@ function toStill(row, admin = false) {
   if (!admin) return still; // the public payload carries no review or correction internals
   return {
     ...still,
-    machine: { facets: row.facets ?? {}, tags: row.tags ?? [] },
+    machine: { facets: row.facets ?? {}, tags: row.tags ?? [], sources: row.facetSources ?? {}, run: row.labelsRun ?? null },
     human: { facets: row.facetsHuman ?? {}, tags: row.tagsHuman ?? { add: [], remove: [] } },
     review: row.reviewState,
     reviewNote: row.reviewNote ?? null,
@@ -71,17 +73,27 @@ function toStill(row, admin = false) {
     reasons: row.reviewReasons ?? [],
     // The sibling works this frame repeats in (repeats.js); a mark only.
     repeatIn: row.repeatIn ?? [],
+    // The owner's "labels checked" snapshot (accuracy.js), or null.
+    labelCheck: row.labelCheck ?? null,
     // The tagger's rating reason, as a mark on the card.
     sensitive: (row.reviewReasons ?? []).some((r) => r.k === "rating"),
   };
 }
 
-export const REASON_KINDS = ["text", "rating", "unsure"];
+export const REASON_KINDS = ["text", "rating", "unsure", "head", "split", "scale"];
+// What Worth a look shows, and the Review page counts, unless asked for
+// more. A shot size read from a head alone is shown: it is a guess that
+// only beats a blank when it is marked. So is a size the face gave where
+// the same person's head disagrees (wrong about half the time on two blind
+// grades, against one in eight where they agree). Other unsure shot scales are
+// opt-in: the scenery tag scores below the cut by design, so with them a
+// quarter to a half of a work's stills would be listed (measured 2026-10-06).
+export const DEFAULT_REASON_KINDS = ["text", "rating", "unsure", "head", "split"];
 
 // The picked stills with a reason to look, grouped by work in library
 // order. kinds: which reasons count; all: reviewed ones too (the default
 // is the unreviewed, not hidden ones, the review-by-exception list).
-export async function exceptions({ kinds = REASON_KINDS, all = false } = {}) {
+export async function exceptions({ kinds = DEFAULT_REASON_KINDS, all = false } = {}) {
   const wanted = new Set(REASON_KINDS.filter((k) => kinds.includes(k)));
   const scope = all ? sql`true` : sql`s.review_state = 'unreviewed' and not s.excluded`;
   const every = (await db().execute(sql`select ${sql.raw(stillSelect("s"))} from stills s
@@ -107,8 +119,10 @@ export async function exceptions({ kinds = REASON_KINDS, all = false } = {}) {
 
 // How many unreviewed stills carry a reason (the Review page's link).
 export async function exceptionCount() {
+  const kinds = `{${DEFAULT_REASON_KINDS.join(",")}}`;
   const r = await db().execute(sql`select count(*)::int as n from stills s
-    where s.selected and s.review_state = 'unreviewed' and not s.excluded and jsonb_array_length(s.review_reasons) > 0`);
+    where s.selected and s.review_state = 'unreviewed' and not s.excluded
+      and exists (select 1 from jsonb_array_elements(s.review_reasons) x where x->>'k' = any(${kinds}::text[]))`);
   return r.rows[0]?.n ?? 0;
 }
 
@@ -597,11 +611,15 @@ export async function visibleStillById(id) {
 // Owner corrections. facetsHuman: {family: value|null}; tagsHuman: {add, remove}.
 // reviewed_at records the last time a person touched the still, so a bulk
 // keep's undo leaves a still edited since alone.
-export async function setCorrections(id, { facetsHuman, tagsHuman, note }) {
-  await db()
-    .update(stillsTable)
-    .set({ facetsHuman, tagsHuman, reviewNote: note ?? null, reviewedAt: sql`now()` })
-    .where(eq(stillsTable.id, id));
+// labelCheck (accuracy.js): a snapshot to set, null to clear, undefined to
+// leave as it is; written in the same update so a re-import that runs
+// between two writes cannot drop the still with half of them. Returns
+// whether the still was still there.
+export async function setCorrections(id, { facetsHuman, tagsHuman, note, labelCheck }) {
+  const set = { facetsHuman, tagsHuman, reviewNote: note ?? null, reviewedAt: sql`now()` };
+  if (labelCheck !== undefined) set.labelCheck = labelCheck;
+  const rows = await db().update(stillsTable).set(set).where(eq(stillsTable.id, id)).returning({ id: stillsTable.id });
+  return rows.length > 0;
 }
 
 // Every distinct value seen per family, machine or human, for the editor's
@@ -616,7 +634,10 @@ export async function facetChoices() {
     ) x where value is not null and value <> '' order by key, value`);
   const values = {};
   for (const row of r.rows) (values[row.key] ??= []).push(row.value);
-  return values;
+  // Every label the report scores gets a control, even one no still has a
+  // value for yet, so a checked still can record a label the machine missed.
+  for (const family of REPORT_FAMILIES) values[family] ??= [];
+  return Object.fromEntries(Object.entries(values).sort(([a], [b]) => a.localeCompare(b)));
 }
 
 // The Review page's tree: the Library's grouping (franchise -> season ->

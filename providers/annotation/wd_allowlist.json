@@ -1,5 +1,5 @@
 {
-  "allowlist_version": "wd-swinv2-v3-allowlist-3",
+  "allowlist_version": "wd-swinv2-v3-allowlist-4",
   "taxonomy_version": "visual-taxonomy-v3",
   "source_vocabulary": {
     "checkpoint": "SmilingWolf/wd-swinv2-tagger-v3",
@@ -545,6 +545,13 @@
       "family": "shot_scale",
       "field": "shot_scale",
       "value": "close-up",
+      "role": "primary"
+    },
+    {
+      "tag": "eye_focus",
+      "family": "shot_scale",
+      "field": "shot_scale",
+      "value": "extreme-close-up",
       "role": "primary"
     },
     {

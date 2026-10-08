@@ -134,7 +134,54 @@ export function reviewReasons(tagRecord, proposal) {
     if (s.family !== "setting-time-weather" || s.label === "abstain" || !(s.score < UNSURE_CUT)) continue;
     out.push({ k: "unsure", label: s.label, score: Math.round(s.score * 100) / 100 });
   }
+  // A shot scale proposed below the same cut (#19): the scenery tag and the
+  // head lane score there by design. Its own kind, so Worth a look can show
+  // or leave it out apart from the scene labels: on the gold set it would
+  // flag about a quarter of stills, most of them from the scenery tag,
+  // which review accepted 54 times in 59. A size read from a head alone
+  // (no face) is a kind of its own and shown by default: on a blind grade
+  // of fresh works those were right about two times in three, and a guess
+  // is only better than a blank if someone sees it marked.
+  const scale = (proposal?.proposal?.scores || []).find((s) => s.family === "shot-scale");
+  const field = proposal?.provenance?.fields?.shot_scale;
+  if (scale && scale.label !== "abstain" && scale.score < UNSURE_CUT) {
+    const source = field?.source ?? proposal.provenance?.shot_scale_lane ?? null;
+    out.push({ k: source === "head-height" ? "head" : "scale", label: scale.label, score: Math.round(scale.score * 100) / 100, source });
+  } else if (scale && scale.label !== "abstain" && field?.agrees === false) {
+    // A size the face gave where the same person's head, a second opinion
+    // recorded beside it, says otherwise. Its own kind, shown by default: on
+    // two blind grades of fresh works (head and shoulders counted as medium)
+    // the face's size was wrong on 7 of 15 such frames against 9 of 69
+    // where the two agreed. Mostly head and shoulders the face called close-up.
+    out.push({ k: "split", label: scale.label, score: Math.round(scale.score * 100) / 100, head: field.head });
+  }
   return out;
+}
+
+// What made a run's labels, as the proposals file records it (a missing
+// field is a run made before it was recorded).
+function labelsRunOf(doc) {
+  const first = doc.proposals?.[0]?.proposal ?? {};
+  return {
+    taxonomy: doc.taxonomy_version ?? null,
+    allowlist: doc.allowlist_version ?? null,
+    fusion: first.provider_version ?? null,
+    cuts: doc.configuration ?? null,
+  };
+}
+
+// Which signal proposed each facet, for the facets the run answered:
+// {family: {s: source, p: score}}. Null for a run from before fusion
+// recorded sources, except shot scale, whose lane was recorded first.
+function facetSourcesOf(rec, facets) {
+  const fields = rec?.provenance?.fields;
+  const out = {};
+  for (const name of Object.keys(facets)) {
+    const f = fields?.[name];
+    if (f && f.source && f.source !== "none") out[name] = { s: f.source, p: f.score ?? null };
+    else if (name === "shot_scale" && rec?.provenance?.shot_scale_lane) out[name] = { s: rec.provenance.shot_scale_lane, p: null };
+  }
+  return Object.keys(out).length ? out : null;
 }
 
 const dig = (node, path) => {
@@ -242,9 +289,12 @@ export async function importWork(workId) {
   const completed = join(extractDir, "results", "completed");
   const palettes = readPalettes([regenerated, existsSync(completed) ? join(onlyDir(completed), "artifacts") : null, join(analyzeDir, "surplus-colour", "artifacts")]);
   const proposals = new Map();
+  let labelsRun = null;
   for (const file of ["proposals.json", "surplus-proposals.json"]) {
     if (!existsSync(join(analyzeDir, file))) continue;
-    for (const p of readJson(join(analyzeDir, file)).proposals) proposals.set(p.candidate_id, p);
+    const doc = readJson(join(analyzeDir, file));
+    for (const p of doc.proposals) proposals.set(p.candidate_id, p);
+    labelsRun ??= labelsRunOf(doc);
   }
   // The tagger's raw record per frame (scores at the retention floor and
   // the segregated rating lane): evidence for the reasons, never a facet.
@@ -274,6 +324,7 @@ export async function importWork(workId) {
       shokoFileId: ident.file_id ?? null,
       bundleId: bundle.bundle_id ?? null,
       selection,
+      labelsRun,
     })
     .onConflictDoUpdate({
       target: works.id,
@@ -281,7 +332,7 @@ export async function importWork(workId) {
         title: sql`excluded.title`, entryType: sql`excluded.entry_type`, episode: sql`excluded.episode`,
         episodeTitle: sql`excluded.episode_title`, shokoSeriesId: sql`excluded.shoko_series_id`,
         shokoEpisodeIds: sql`excluded.shoko_episode_ids`, shokoFileId: sql`excluded.shoko_file_id`,
-        bundleId: sql`excluded.bundle_id`, selection: sql`excluded.selection`,
+        bundleId: sql`excluded.bundle_id`, selection: sql`excluded.selection`, labelsRun: sql`excluded.labels_run`,
         // This import's stills have not been matched for repeats yet.
         repeatsKey: sql`null`,
       },
@@ -312,7 +363,7 @@ export async function importWork(workId) {
       id: `${workId}/${cid}`, workId, candidateId: cid, shotId: t.shot ?? rec?.shot_id ?? null, tsSeconds: t.ts ?? null,
       source: entry.source ?? "published", selected: picked.has(cid), facets, tags, tiers,
       palette: palettes.get(cid) ?? null, embedding: vector, embeddingModel: vector ? model : null,
-      reviewReasons: reviewReasons(tagRecords.get(cid), rec),
+      reviewReasons: reviewReasons(tagRecords.get(cid), rec), facetSources: facetSourcesOf(rec, facets), labelsRun,
     };
     await db()
       .insert(stills)
@@ -326,20 +377,22 @@ export async function importWork(workId) {
           selected: sql`excluded.selected`, facets: sql`excluded.facets`, tags: sql`excluded.tags`,
           tiers: sql`excluded.tiers`, palette: sql`excluded.palette`, embedding: sql`excluded.embedding`,
           embeddingModel: sql`excluded.embedding_model`, reviewReasons: sql`excluded.review_reasons`,
+          facetSources: sql`excluded.facet_sources`, labelsRun: sql`excluded.labels_run`,
         },
       });
     n += 1;
   }
   // A re-run at another still count leaves stills the new set no longer
   // has, and derive has already replaced the work's images whole. One nobody
-  // reviewed goes; one with a review mark, lock, exclusion or correction
+  // reviewed goes; one with a review mark, lock, exclusion, correction or
+  // label check
   // stays as not picked (public pages show picked stills only), so no
   // decision is lost.
   const keep = ladder.candidates.map((c) => c.candidate_id);
   const dropped = await db().execute(sql`delete from stills
     where work_id = ${workId} and not (candidate_id = any(${`{${keep.join(",")}}`}::text[]))
       and review_state = 'unreviewed' and not locked and not excluded
-      and facets_human is null and tags_human is null
+      and facets_human is null and tags_human is null and label_check is null
     returning id`);
   // Derive replaced the work's image folder with the new set's, so a
   // dropped still's web images are gone: its tiers go with them (an empty

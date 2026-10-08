@@ -22,10 +22,13 @@ from . import taxonomy
 from .palette_labels import PaletteLabels
 from .people_labels import fuse as fuse_people
 from .composition_labels import resolve as resolve_composition
-from .shot_scale import resolve as resolve_scale
+from .shot_scale import NEIGHBOR, head_opinion, resolve as resolve_scale
 from .wd_labels import WdLabels
 
-PROVIDER_VERSION = "0.1.0"
+# 0.2.0 (2026-10-06): per-label sources in provenance, the head lanes for
+# shot scale and composition. 0.3.0 (2026-10-08): angle from the camera-angle
+# classifier when it ran.
+PROVIDER_VERSION = "0.3.0"
 
 # Mirrors $defs/opaqueId in annotation-record.schema.json. Enforced here so an
 # unusable id fails at construction rather than at review-time validation.
@@ -57,6 +60,14 @@ class CandidateEvidence:
     entropy: Optional[float] = None
     faces: tuple = ()
     frame_width: int = 0
+    # Head boxes from the anime head detector (inference.detect_figures),
+    # largest first, and the largest one's height as a share of the frame's.
+    # Used only where no face answered.
+    heads: tuple = ()
+    head_height: Optional[float] = None
+    # (taxonomy angle, score) from the camera-angle classifier
+    # (inference.classify_angle). Replaces the tagger's angle when present.
+    camera_angle: Optional[tuple[str, float]] = None
     quality_labels: tuple[str, ...] = ("usable",)
     quality_disposition: str = "review"
     quality_score: float = QUALITY_USABLE_SCORE
@@ -72,6 +83,7 @@ def _composition(evidence: CandidateEvidence):
         text_present=evidence.wd.text_present if evidence.wd is not None else False,
         faces=evidence.faces,
         frame_width=evidence.frame_width,
+        heads=evidence.heads,
     )
 
 
@@ -82,12 +94,110 @@ def _shot_scale(evidence: CandidateEvidence):
         wd.score("shot_scale") if wd else 0.0,
         face_fraction=evidence.face_fraction,
         scenery_tagged=evidence.scenery_tagged,
+        head_height=evidence.head_height,
     )
+
+
+def _angle(evidence: CandidateEvidence) -> tuple[str, float, str]:
+    """(value, score, source). The classifier answers on every frame, so it
+    is held back where composition found a text-only card: a flat title card
+    has no camera. Titles over a picture keep their angle."""
+    if evidence.camera_angle is not None:
+        if evidence.wd is not None and _composition(evidence).basis == "text-only-card":
+            return "abstain", 0.0, "none"
+        value, score = evidence.camera_angle
+        return value, float(score), "angle-classifier"
+    wd = evidence.wd
+    if wd is None or wd.value("angle") == "abstain":
+        return "abstain", 0.0, "none"
+    return wd.value("angle"), wd.score("angle"), "tagger"
 
 
 def shot_scale_lane(evidence: CandidateEvidence) -> str:
     """Which lane answered shot_scale, for per-lane calibration."""
     return _shot_scale(evidence).lane
+
+
+NO_SOURCE = {"source": "none", "score": 0.0}
+
+
+def field_sources(evidence: CandidateEvidence) -> dict[str, dict]:
+    """Which signal answered each label field, and with what score.
+
+    Recorded beside the proposal, like the shot-scale lane, so review can be
+    scored per label, per source and per value (an accuracy figure over a
+    fusion says nothing about which signal to fix), and so a cut-off can be
+    re-tuned from reviewed frames. A field that abstained has source `none`.
+    Must agree with build_labels: the value a source is named for here is
+    the value the proposal carries.
+    """
+    wd = evidence.wd
+    palette = evidence.palette
+
+    def entry(source: str, score: float) -> dict:
+        return {"source": source, "score": round(float(score), 4)}
+
+    out: dict[str, dict] = {}
+    for name in ("setting", "time", "weather"):
+        if wd is None or wd.value(name) == "abstain":
+            out[name] = dict(NO_SOURCE)
+        elif name == "weather" and wd.value(name) == "none-visible":
+            # Inferred from a confident interior, not a weather tag.
+            out[name] = entry("interior-rule", wd.score(name))
+        else:
+            out[name] = entry("tagger", wd.score(name))
+
+    angle, angle_score, angle_source = _angle(evidence)
+    out["angle"] = (entry(angle_source, angle_score)
+                    if angle != "abstain" else dict(NO_SOURCE))
+
+    scale = _shot_scale(evidence)
+    out["shot_scale"] = (entry(scale.lane, scale.score)
+                         if scale.value != "abstain" else dict(NO_SOURCE))
+    # A second opinion from the same person's head where the face answered:
+    # where the two disagree, the gallery lists the still on Worth a look. Not for
+    # the tagger lane: nothing was measured there.
+    if scale.lane == "face-occupancy":
+        second = head_opinion(evidence.faces, evidence.heads)
+        if second:
+            out["shot_scale"]["head"] = second
+            out["shot_scale"]["agrees"] = NEIGHBOR.get(scale.value, scale.value) == second
+
+    # Without the tagger the card test cannot run, so composition abstains
+    # (build_labels via _tagger_fields).
+    composition = _composition(evidence) if wd is not None else None
+    out["composition"] = (entry(composition.basis, composition.score)
+                          if composition and composition.value != "abstain"
+                          else dict(NO_SOURCE))
+
+    people = fuse_people(wd, evidence.face_count)
+    if people.value == "abstain":
+        out["people"] = dict(NO_SOURCE)
+    elif evidence.face_count is None or people.tagger_value == people.value:
+        # The tagger's count stands (faces absent, or not above it).
+        both = (evidence.face_count is not None
+                and not people.evidence_inconsistent)
+        out["people"] = entry("tagger+faces" if both else "tagger", people.score)
+    else:
+        # The face count decided: the tagger abstained or counted fewer.
+        out["people"] = entry("faces", people.score)
+
+    lighting, color_bias = _lighting_and_bias(evidence)
+    if lighting == "abstain":
+        out["lighting"] = dict(NO_SOURCE)
+    elif wd is not None and wd.value("lighting") == lighting:
+        out["lighting"] = entry("tagger", wd.score("lighting"))
+    else:
+        out["lighting"] = entry("palette", palette.lighting_score)
+    if color_bias == "abstain":
+        out["color_bias"] = dict(NO_SOURCE)
+    elif wd is not None and color_bias == "monochrome" and wd.value("color_bias") == "monochrome":
+        out["color_bias"] = entry("tagger", wd.score("color_bias"))
+    else:
+        out["color_bias"] = entry("palette", palette.color_bias_score)
+    out["saturation"] = (entry("palette", palette.saturation_score)
+                         if palette.saturation != "abstain" else dict(NO_SOURCE))
+    return out
 
 
 def _tagger_fields(evidence: CandidateEvidence) -> dict:
@@ -106,13 +216,14 @@ def _tagger_fields(evidence: CandidateEvidence) -> dict:
                  "composition", "people")}
         gaps["people"] = fuse_people(None, evidence.face_count).value
         gaps["shot_scale"] = _shot_scale(evidence).value
+        gaps["angle"] = _angle(evidence)[0]
         return gaps
     return {
         "setting": wd.value("setting"),
         "time": wd.value("time"),
         "weather": wd.value("weather"),
         "shot_scale": _shot_scale(evidence).value,
-        "angle": wd.value("angle"),
+        "angle": _angle(evidence)[0],
         "composition": _composition(evidence).value,
         "people": fuse_people(wd, evidence.face_count).value,
     }
@@ -217,7 +328,7 @@ def build_scores(evidence: CandidateEvidence) -> list[dict]:
               key=lambda pair: pair[1])
     scale_verdict = _shot_scale(evidence)
     scale = (scale_verdict.value, scale_verdict.score)
-    angle = tagged("angle")
+    angle = _angle(evidence)[:2]
     fused = fuse_people(wd, evidence.face_count)
     people = (fused.value, fused.score)
     return [

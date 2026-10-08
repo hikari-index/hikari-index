@@ -15,9 +15,9 @@ episodes 38-54% of published frames have none. Face occupancy is a strong
 signal inside its domain and blind outside it, which is exactly the shape a
 lane should have.
 
-Nothing here guesses. A frame that no lane reaches abstains, and on the
-measured episodes that is 17-26% of frames -- mostly people shot from behind or
-too far away for a face. Those need a signal that does not exist yet.
+Nothing here guesses. A frame that no lane reaches abstains. On the measured
+episodes that was 17-26% of frames, mostly people shot from behind or too far
+away for a face; the head lane (2026-10-06) reaches about half of those.
 """
 
 from __future__ import annotations
@@ -26,6 +26,18 @@ from dataclasses import dataclass
 from typing import Optional
 
 from . import taxonomy
+
+# What the five sizes mean, in film terms (decided 2026-10-07):
+#   extreme-close-up  a detail fills the frame (eyes, a hand, part of an object)
+#   close-up          the face or head fills most of the frame, little or no shoulder
+#   medium            head and shoulders down to about the knees: film's medium
+#                     close-up, medium and medium long (cowboy) shots
+#   wide              the whole figure, from just fitting to plenty of room
+#   extreme-wide      the place dominates; figures tiny or absent
+# Head and shoulders is medium, not close-up. A blind grade of fresh works
+# found it a third of all graded frames and the lanes already called most of
+# them medium; the face sizes of the two overlap (0.20-0.39 of frame area for
+# head and shoulders, 0.17-0.47 for close-ups), so no cut separates them.
 
 #: Face area as a fraction of frame area. Calibrated 2026-07-26 against the
 #: 53 face-lane frames of the reviewed sample (human verdicts):
@@ -42,20 +54,48 @@ from . import taxonomy
 #: corrected to close-up. The one extreme-wide assertion (0.0007) was also
 #: corrected, to wide. On the calibration sample these cuts score 48/53
 #: against the old bounds' 44/53, and every remaining miss is an adjacent
-#: class. No lane asserts the extremes today: the allowlist maps no tagger tag
-#: to `extreme-close-up` or `extreme-wide`, and the scenery lane answers
-#: `wide`. Making either reachable needs a tag in the checkpoint's vocabulary
-#: that names it, checked against reviewed frames.
+#: class. Only the tagger lane asserts an extreme: `eye_focus` maps to
+#: `extreme-close-up` (allowlist 4, 2026-10-06; above about 0.45 on the gold
+#: set nearly every hit was an eye or the band of a face around the eyes
+#: filling the frame, checked by eye on all 26 hits over 0.35). Nothing
+#: reaches `extreme-wide`: `very_wide_shot` cleared 0.35 on 3 of 1,800 gold
+#: frames, and the reviewed one was called wide.
 FACE_CUTS = (
     (0.14, "close-up"),
     (0.009, "medium"),
 )
 FACE_FLOOR_VALUE = "wide"
 
+#: Head height as a share of frame height, for frames no other lane
+#: reaches: the anime head detector (inference.detect_figures) sees the back
+#: of a head, a profile, a figure too far off for the face detector.
+#: Calibrated 2026-10-06 against the face lane on the 852 gold-set frames
+#: where a head box covers the largest face (the face lane's class as the
+#: label): these cuts reproduce it on 87% (fitted on four works, 83-86% on
+#: the other five; always answering medium scores 57%). The extremes are not
+#: asserted, as for the face lane.
+HEAD_CUTS = (
+    (0.72, "close-up"),
+    (0.19, "medium"),
+)
+HEAD_FLOOR_VALUE = "wide"
+#: A head this close to a cut (in share of frame height) scores lower.
+NEAR_HEAD_CUT = 0.05
+
 #: A lane that reaches a value it cannot defend precisely still routes to a
-#: human. These sit below the protocol's confident band on purpose.
+#: human. These sit below the protocol's confident band on purpose. On the
+#: frames the head lane fills (the ones every other lane left empty) it
+#: agreed with the July reviewed sample on only 3 of 10; two blind grades of
+#: fresh works (2026-10-07, cuts never fitted on them) found its fills right
+#: on 8 of 11 and 14 of 22 faceless frames, 22 of 33 together; several
+#: misses were head and shoulders called close-up (heads 0.79-0.86 of frame
+#: height). Right two times in three is better than a blank only if it is
+#: marked, so its scores stay below the 0.35 the gallery treats as unsure
+#: and the gallery lists these sizes for review by default.
 FACE_BASE_SCORE = 0.55
 FACE_EDGE_SCORE = 0.35
+HEAD_BASE_SCORE = 0.30
+HEAD_EDGE_SCORE = 0.25
 SCENERY_SCORE = 0.30
 
 #: How close to a cut point counts as "near it", in log space, since the cuts
@@ -106,6 +146,23 @@ def from_face_occupancy(fraction: float) -> ShotScale:
                      score=score, lane="face-occupancy")
 
 
+def from_head_height(fraction: float) -> ShotScale:
+    """Largest head's height as a share of the frame's, mapped to a scale.
+    Nearness is linear here: head height spans one order of magnitude, not
+    three."""
+    if fraction <= 0.0:
+        return ABSTAIN
+    value = HEAD_FLOOR_VALUE
+    for cut, label in HEAD_CUTS:
+        if fraction >= cut:
+            value = label
+            break
+    near = any(abs(fraction - cut) < NEAR_HEAD_CUT for cut, _ in HEAD_CUTS)
+    return ShotScale(value=taxonomy.check("shot_scale", value),
+                     score=HEAD_EDGE_SCORE if near else HEAD_BASE_SCORE,
+                     lane="head-height")
+
+
 def from_scenery(scenery_tagged: bool) -> ShotScale:
     """A frame the tagger calls scenery is a landscape, and landscapes are wide.
 
@@ -138,19 +195,49 @@ def from_scenery(scenery_tagged: bool) -> ShotScale:
                      score=SCENERY_SCORE, lane="scenery")
 
 
+def head_opinion(faces, heads) -> Optional[str]:
+    """What the head lane says about a frame the face lane answered, from the
+    head that covers the largest face's center (the same person; the head
+    cuts were calibrated on exactly those pairs). None when no head covers
+    it. A second opinion only, recorded beside the answer: it never changes
+    it. On two blind grades of fresh works (2026-10-07, head and shoulders
+    counted as medium) the face's size was wrong on 7 of 15 frames whose
+    head disagreed and 9 of 69 whose head agreed; most of the 7 were head
+    and shoulders the face called close-up. The two disagree on about one
+    face-lane answer in six."""
+    if not heads or not faces:
+        return None
+    box = faces[0].get("box") or []
+    if len(box) != 4:
+        return None
+    x, y = (box[0] + box[2]) / 2, (box[1] + box[3]) / 2
+    covering = [h for h in heads
+                if h["box"][0] <= x <= h["box"][2] and h["box"][1] <= y <= h["box"][3]]
+    chosen = max(covering, key=lambda h: h.get("score", 0.0), default=None)
+    fraction = chosen.get("height_fraction") if chosen else None
+    return from_head_height(fraction).value if fraction else None
+
+
+#: The head lane names no extreme class; an extreme answer is compared with
+#: its neighbor.
+NEIGHBOR = {"extreme-close-up": "close-up", "extreme-wide": "wide"}
+
+
 def resolve(
     tagger_value: str,
     tagger_score: float,
     face_fraction: Optional[float] = None,
     scenery_tagged: bool = False,
+    head_height: Optional[float] = None,
 ) -> ShotScale:
     """First lane that applies, in descending order of trust.
 
     The tagger goes first because it read the frame and named the scale
     directly. Face occupancy goes second because it is a measurement rather
-    than a naming, and it is only valid where a face exists. Scenery goes last
-    because it infers scale from subject matter, which is the weakest of the
-    three.
+    than a naming, and it is only valid where a face exists. Scenery goes
+    third because it infers scale from subject matter (accepted on 54 of 59
+    reviewed frames). Head height comes last, so it only fills frames every
+    other lane left empty and changes no answer they give.
     """
     if tagger_value not in ("abstain", "unknown"):
         return ShotScale(value=tagger_value, score=tagger_score, lane="tagger")
@@ -158,4 +245,7 @@ def resolve(
         by_face = from_face_occupancy(face_fraction)
         if by_face.backed:
             return by_face
-    return from_scenery(scenery_tagged)
+    by_scenery = from_scenery(scenery_tagged)
+    if by_scenery.backed or not head_height:
+        return by_scenery
+    return from_head_height(head_height)

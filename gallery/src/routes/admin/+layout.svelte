@@ -7,6 +7,7 @@
     <span class="label">Admin</span>
     <a href="/admin">Review</a>
     <a href="/admin/exceptions">Worth a look</a>
+    <a href="/admin/labels">Labels</a>
     <a href="/admin/onboard">Onboard</a>
     <a href="/admin/jobs">Jobs</a>
     <a href="/admin/remove">Removed</a>
