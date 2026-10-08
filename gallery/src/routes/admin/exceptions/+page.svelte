@@ -4,10 +4,11 @@
   let { data, form } = $props();
   const KINDS = { text: "text on the frame", rating: "rating", unsure: "unsure scene label", head: "shot size from a head", split: "face and head disagree", scale: "unsure shot scale" };
   // Where a shot scale came from, in words (provenance.fields sources).
-  // A tagger-sourced size only lands here (under the usual cut) when two
-  // of its tags pointed to different sizes and the stronger won by a
-  // little, so say that rather than "the tagger's tags".
-  const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "tags that pointed two ways", "face-occupancy": "the size of a face" };
+  // A tagger-sourced size lands here (under the usual cut) when two of its
+  // tags pointed to different sizes and the stronger won by a little, or,
+  // on a run with a lowered tag cut, when its one tag was weak; the record
+  // does not say which, so the words cover both.
+  const FROM = { scenery: "the scenery tag", "head-height": "the size of a head", tagger: "the tagger's tags (two that pointed different ways, or one too weak to trust)", "face-occupancy": "the size of a face" };
   const query = (kinds, all) => {
     const q = new URLSearchParams();
     // The default set needs no k=; any other choice is spelled out.

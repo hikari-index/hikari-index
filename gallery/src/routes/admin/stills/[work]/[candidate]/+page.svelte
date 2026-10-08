@@ -143,7 +143,7 @@
           {#if family === "shot_scale"}
             <!-- The page's reasons that bear on this one label, so a disagreement or a weak guess is visible where it is corrected (#41). -->
             {#each s.reasons.filter((r) => r.k === "split") as r (r.k)}<small class="meta why">This size came from the face; the same person's head reads it as {pretty(r.head)}. Pick whichever is right.</small>{/each}
-            {#each s.reasons.filter((r) => r.k === "scale") as r (r.k)}<small class="meta why">Proposed at {r.score}, below the usual cut, from {r.source === "scenery" ? "the scenery tag" : "tags that pointed two ways"}.</small>{/each}
+            {#each s.reasons.filter((r) => r.k === "scale") as r (r.k)}<small class="meta why">Proposed at {r.score}, below the usual cut, from {r.source === "scenery" ? "the scenery tag" : "the tagger's tags (two that pointed different ways, or one too weak to trust)"}.</small>{/each}
           {/if}
         </label>
       {/each}
@@ -255,7 +255,7 @@
     margin: 0;
     font-size: var(--t-meta);
   }
-  .row .why { flex-basis: 100%; }
+  .row .why { grid-column: 1 / -1; }
   .row {
     display: grid;
     grid-template-columns: 7rem minmax(0, 1fr) minmax(0, 1fr);
