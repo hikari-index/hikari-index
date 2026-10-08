@@ -36,10 +36,15 @@ ARG AFD_LANDMARK_REVISION="9b3435248b26aeb82e2a8578fe9d86d5d57158af"
 # their model cards; checked by sha256 in the final stage.
 ARG DEEPGHS_HEAD_REVISION="06604feee81983792a57c21081e539c0ae229833"
 ARG DEEPGHS_PERSON_REVISION="e39c744c22432ad01f91dd254fe2b02c8d878b8c"
+# The camera-angle classifier (inference.classify_angle), Apache-2.0 on its
+# model card; checked by sha256 in the final stage.
+ARG ASLAKEY_ANGLE_REVISION="4de000c6e39630dbcdbe339401064f85274098e5"
 ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 HF_HOME=/opt/hikari/models/hf-cache
 RUN pip install "huggingface_hub==0.36.2" "hf-xet==1.5.2"
 RUN python -c "from huggingface_hub import hf_hub_download; import json, os; d = '/opt/hikari/models/deepghs'; [hf_hub_download(r, f'{m}/model.onnx', revision=v, local_dir=d) for r, m, v in (('deepghs/anime_head_detection', 'head_detect_v2.0_s', os.environ['DEEPGHS_HEAD_REVISION']), ('deepghs/anime_person_detection', 'person_detect_v1.3_s', os.environ['DEEPGHS_PERSON_REVISION']))]; json.dump({'head': {'repo': 'deepghs/anime_head_detection', 'file': 'head_detect_v2.0_s/model.onnx', 'revision': os.environ['DEEPGHS_HEAD_REVISION']}, 'person': {'repo': 'deepghs/anime_person_detection', 'file': 'person_detect_v1.3_s/model.onnx', 'revision': os.environ['DEEPGHS_PERSON_REVISION']}, 'licence': 'MIT (model cards); trained with Ultralytics (AGPL-3.0)'}, open(d + '/PIN.json', 'w'), indent=2)" \
     && rm -rf /opt/hikari/models/deepghs/.cache
+RUN python -c "from huggingface_hub import hf_hub_download; import json, os; d = '/opt/hikari/models/aslakey-camera-angle'; [hf_hub_download('aslakey/camera_angle', f, revision=os.environ['ASLAKEY_ANGLE_REVISION'], local_dir=d) for f in ('config.json', 'model.safetensors')]; json.dump({'repo': 'aslakey/camera_angle', 'revision': os.environ['ASLAKEY_ANGLE_REVISION'], 'base': 'facebook/dinov2-with-registers-large', 'licence': 'Apache-2.0 (model card; base model Apache-2.0)'}, open(d + '/PIN.json', 'w'), indent=2)" \
+    && rm -rf /opt/hikari/models/aslakey-camera-angle/.cache
 RUN python -c "from huggingface_hub import snapshot_download; import json, os; p = snapshot_download(repo_id=os.environ['SIGLIP_MODEL_ID'], revision=os.environ['SIGLIP_REVISION'], local_dir='/opt/hikari/models/siglip2-base-patch16-224', allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*']); json.dump({'model_id': os.environ['SIGLIP_MODEL_ID'], 'revision': os.environ['SIGLIP_REVISION'], 'sha256': '612923381c76ec5a9bed335d1c48827e3f2e506ac31b044b63b2031fadee6a0b', 'local_dir': p}, open('/opt/hikari/models/siglip2-base-patch16-224/WEIGHTS_PIN.json','w'), indent=2)"
 RUN python -c "from huggingface_hub import snapshot_download; import json, os; p = snapshot_download(repo_id=os.environ['WD_MODEL_ID'], revision=os.environ['WD_REVISION'], local_dir='/opt/hikari/models/wd-swinv2-tagger-v3', allow_patterns=['*.json','*.safetensors','*.csv']); json.dump({'model_id': os.environ['WD_MODEL_ID'], 'revision': os.environ['WD_REVISION'], 'local_dir': p}, open('/opt/hikari/models/wd-swinv2-tagger-v3/WEIGHTS_PIN.json','w'), indent=2)"
 # Downloading by commit caches the snapshot but writes no refs/ entry, and
@@ -97,6 +102,7 @@ COPY --from=models /opt/hikari/models/hf-cache/hub/models--hysts--anime-face-det
 COPY --from=models /opt/hikari/models/hf-cache/hub/models--hysts--anime-face-detector-hrnetv2 /opt/hikari/models/hf-cache/hub/models--hysts--anime-face-detector-hrnetv2
 COPY --from=models /opt/hikari/models/anime-face-detector-PIN.json /opt/hikari/models/anime-face-detector-PIN.json
 COPY --from=models /opt/hikari/models/deepghs /opt/hikari/models/deepghs
+COPY --from=models /opt/hikari/models/aslakey-camera-angle /opt/hikari/models/aslakey-camera-angle
 COPY --from=palette --chmod=0555 /build/target/x86_64-unknown-linux-musl/release/palette-descriptor /opt/hikari/bin/palette-descriptor
 RUN cd /opt/hikari && sha256sum -c - <<'EOF'
 612923381c76ec5a9bed335d1c48827e3f2e506ac31b044b63b2031fadee6a0b  models/siglip2-base-patch16-224/model.safetensors
@@ -107,6 +113,8 @@ e71271376406a743c01528a0460637fcc06e72aeeea583f85007cc72dc8b7a4a  models/hf-cach
 17c3c65a067fcabac46a8e47290dfa8a9400d6033179cbe28cacbe9f36ef948f  bin/palette-descriptor
 6679f9b71192298bbf174d82e9e5581c3237b0c3dc67deace7cdbf686b070a00  models/deepghs/head_detect_v2.0_s/model.onnx
 6da88929438cd442e31e45ff4f934dd2d7eb9cf7a423c22885d650ee52550f90  models/deepghs/person_detect_v1.3_s/model.onnx
+b82275a3b1e909fb82eb55967e4a737b5296ae18c9cf1d9239fdc329d914460e  models/aslakey-camera-angle/model.safetensors
+a04d559a00aca5dbaa6a27fe9e7dfbe16a420b074cb563eaee99facd1121fd43  models/aslakey-camera-angle/config.json
 EOF
 COPY providers/inference /opt/hikari/inference/inference
 RUN rm -f /opt/hikari/inference/inference/embed_dino.py /opt/hikari/inference/inference/zeroshot_bundle.py /opt/hikari/inference/inference/zeroshot_prompts.json

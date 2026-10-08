@@ -61,10 +61,11 @@ def test_a_source_is_named_exactly_when_a_value_is():
     face_sets = [(None, None, ()), (0, None, ()),
                  (1, 0.2, ({"box": [900, 100, 1020, 260]},)),
                  (3, 0.05, ({"box": [100, 100, 200, 200]},))]
-    for tags, (count, fraction, boxes), symmetrical in itertools.product(
-            tag_sets, face_sets, (False, True)):
+    for tags, (count, fraction, boxes), symmetrical, angle, entropy in itertools.product(
+            tag_sets, face_sets, (False, True), (None, ("low", 0.9)), (5.0, 1.0)):
         evidence = _evidence(tags, count, fraction, boxes,
-                             is_symmetrical=symmetrical, entropy=5.0)
+                             is_symmetrical=symmetrical, entropy=entropy,
+                             camera_angle=angle)
         labels, sources = build_labels(evidence), field_sources(evidence)
         assert set(sources) == set(FLAT)
         for name, path in FLAT.items():
@@ -102,3 +103,24 @@ def test_lighting_names_the_tagger_only_where_it_spoke():
     dark = CandidateEvidence(candidate_id="cand-0001", shot_id="shot-001",
                              palette=_palette(luma_mean=0.13, p95=0.26), wd=None)
     assert field_sources(dark)["lighting"]["source"] == "palette"
+
+
+def test_angle_comes_from_the_classifier_when_it_ran():
+    tagged = {"from_above": 0.7}
+    assert build_labels(_evidence(tagged))["angle_composition"]["angle"] == "high"
+    assert field_sources(_evidence(tagged))["angle"]["source"] == "tagger"
+    evidence = _evidence(tagged, camera_angle=("low", 0.93), entropy=5.0)
+    assert build_labels(evidence)["angle_composition"]["angle"] == "low"
+    assert field_sources(evidence)["angle"] == {"source": "angle-classifier", "score": 0.93}
+    # Without the tagger the classifier still answers.
+    assert build_labels(_evidence(None, camera_angle=("dutch", 0.6)))["angle_composition"]["angle"] == "dutch"
+
+
+def test_angle_abstains_on_a_text_only_card():
+    # Text on a flat ground is a card: no camera to name an angle for.
+    card = _evidence({"english_text": 0.9}, camera_angle=("eye-level", 0.99), entropy=1.0)
+    assert build_labels(card)["angle_composition"]["angle"] == "abstain"
+    assert field_sources(card)["angle"]["source"] == "none"
+    # Titles over a picture keep it.
+    titled = _evidence({"english_text": 0.9}, camera_angle=("low", 0.8), entropy=5.0)
+    assert build_labels(titled)["angle_composition"]["angle"] == "low"

@@ -159,6 +159,7 @@ def analyze(job: dict, should_stop) -> tuple[Path, dict]:
     step("faces", "inference.detect_faces", "--bundle", str(bundle), "--out", str(out / "faces"), "--device", DEVICE)
     # Heads and whole figures (onnxruntime on CPU on every analyze image).
     step("figures", "inference.detect_figures", "--bundle", str(bundle), "--out", str(out / "figures"))
+    step("angle", "inference.classify_angle", "--bundle", str(bundle), "--out", str(out / "angle"), "--device", DEVICE)
     step("embed", "inference.embed_bundle", "--bundle", str(bundle), "--out", str(out / "embeddings"), "--device", DEVICE)
     if surplus and surplus.is_dir():
         step("embed-surplus", "inference.embed_loose", "--dir", str(surplus), "--out", str(out / "surplus-embeddings"), "--device", DEVICE)
@@ -167,6 +168,7 @@ def analyze(job: dict, should_stop) -> tuple[Path, dict]:
     fuse = ["annotation.cli", "--bundle", str(bundle), "--results", str(colour),
             "--tags", str(out / "tags" / "result-manifest.json"), "--faces", str(out / "faces" / "result-manifest.json"),
             "--figures", str(out / "figures" / "result-manifest.json"),
+            "--angle", str(out / "angle" / "result-manifest.json"),
             "--out", str(out / "proposals.json"), "--run-ref", f"run-{work}"]
     coverage = run_root / "audit" / "shot-coverage.json"
     if coverage.is_file():
@@ -202,6 +204,7 @@ def label_picked_surplus(sel, bundle, run_root, surplus, out, work, step, should
     surplus frames still compete without palette and category terms.
 
     Writes surplus-picks.json, surplus-tags/, surplus-faces/, surplus-figures/,
+    surplus-angle/,
     surplus-colour/artifacts/ and surplus-proposals.json beside the bundle's
     records. The palette tool is the same binary the extraction runs (the
     image checks its sha256), so its descriptors match the bundle's.
@@ -234,6 +237,8 @@ def label_picked_surplus(sel, bundle, run_root, surplus, out, work, step, should
          "--out", str(out / "surplus-faces"), "--device", DEVICE)
     step("figures-surplus", "inference.detect_figures", "--loose", str(surplus), "--candidates", str(picks_file),
          "--out", str(out / "surplus-figures"))
+    step("angle-surplus", "inference.classify_angle", "--loose", str(surplus), "--candidates", str(picks_file),
+         "--out", str(out / "surplus-angle"), "--device", DEVICE)
     colour = out / "surplus-colour"
     (colour / "artifacts").mkdir(parents=True)
     version = palette_version()
@@ -257,6 +262,7 @@ def label_picked_surplus(sel, bundle, run_root, surplus, out, work, step, should
          "--tags", str(out / "surplus-tags" / "result-manifest.json"),
          "--faces", str(out / "surplus-faces" / "result-manifest.json"),
          "--figures", str(out / "surplus-figures" / "result-manifest.json"),
+         "--angle", str(out / "surplus-angle" / "result-manifest.json"),
          "--out", str(out / "surplus-proposals.json"), "--run-ref", f"run-{work}")
     return len(picked)
 

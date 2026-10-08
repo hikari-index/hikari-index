@@ -24,6 +24,7 @@ ARG PALETTE_SHA256="17c3c65a067fcabac46a8e47290dfa8a9400d6033179cbe28cacbe9f36ef
 ARG PYTHON_IMAGE="python:3.11-slim-bookworm@sha256:a36c24f9cbdf4fd0f52d67f0823eeac19c2028c637cecc392d97f980d4fec56b"
 ARG DEEPGHS_HEAD_REVISION="06604feee81983792a57c21081e539c0ae229833"
 ARG DEEPGHS_PERSON_REVISION="e39c744c22432ad01f91dd254fe2b02c8d878b8c"
+ARG ASLAKEY_ANGLE_REVISION="4de000c6e39630dbcdbe339401064f85274098e5"
 
 FROM ${PYTHON_IMAGE} AS figures
 ARG DEEPGHS_HEAD_REVISION
@@ -37,6 +38,19 @@ RUN python -c "from huggingface_hub import hf_hub_download; import json, os; d =
 6da88929438cd442e31e45ff4f934dd2d7eb9cf7a423c22885d650ee52550f90  person_detect_v1.3_s/model.onnx
 EOF
 
+# The camera-angle classifier (inference.classify_angle), the same pin and
+# sha256 as containers/cpu-worker. Apache-2.0 on its model card.
+FROM ${PYTHON_IMAGE} AS angle
+ARG ASLAKEY_ANGLE_REVISION
+ENV PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN pip install "huggingface_hub==0.36.2" "hf-xet==1.5.2"
+RUN python -c "from huggingface_hub import hf_hub_download; import json, os; d = '/opt/hikari/models/aslakey-camera-angle'; [hf_hub_download('aslakey/camera_angle', f, revision=os.environ['ASLAKEY_ANGLE_REVISION'], local_dir=d) for f in ('config.json', 'model.safetensors')]; json.dump({'repo': 'aslakey/camera_angle', 'revision': os.environ['ASLAKEY_ANGLE_REVISION'], 'base': 'facebook/dinov2-with-registers-large', 'licence': 'Apache-2.0 (model card; base model Apache-2.0)'}, open(d + '/PIN.json', 'w'), indent=2)" \
+    && rm -rf /opt/hikari/models/aslakey-camera-angle/.cache \
+    && cd /opt/hikari/models/aslakey-camera-angle && sha256sum -c - <<'EOF'
+b82275a3b1e909fb82eb55967e4a737b5296ae18c9cf1d9239fdc329d914460e  model.safetensors
+a04d559a00aca5dbaa6a27fe9e7dfbe16a420b074cb563eaee99facd1121fd43  config.json
+EOF
+
 FROM ${RUST_IMAGE} AS palette
 WORKDIR /build
 COPY providers/palette-descriptor/Cargo.toml providers/palette-descriptor/Cargo.lock ./
@@ -48,6 +62,7 @@ ARG PALETTE_SHA256
 COPY --from=palette --chmod=0555 /build/target/x86_64-unknown-linux-musl/release/palette-descriptor /opt/hikari/bin/palette-descriptor
 RUN echo "${PALETTE_SHA256}  /opt/hikari/bin/palette-descriptor" | sha256sum -c -
 COPY --from=figures --chown=hikari:hikari /opt/hikari/models/deepghs /opt/hikari/models/deepghs
+COPY --from=angle --chown=hikari:hikari /opt/hikari/models/aslakey-camera-angle /opt/hikari/models/aslakey-camera-angle
 USER root
 RUN pip install --no-cache-dir --disable-pip-version-check "onnxruntime==1.23.2"
 USER hikari

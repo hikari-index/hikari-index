@@ -26,8 +26,9 @@ from .shot_scale import resolve as resolve_scale
 from .wd_labels import WdLabels
 
 # 0.2.0 (2026-10-06): per-label sources in provenance, the head lanes for
-# shot scale and composition.
-PROVIDER_VERSION = "0.2.0"
+# shot scale and composition. 0.3.0 (2026-10-08): angle from the camera-angle
+# classifier when it ran.
+PROVIDER_VERSION = "0.3.0"
 
 # Mirrors $defs/opaqueId in annotation-record.schema.json. Enforced here so an
 # unusable id fails at construction rather than at review-time validation.
@@ -64,6 +65,9 @@ class CandidateEvidence:
     # Used only where no face answered.
     heads: tuple = ()
     head_height: Optional[float] = None
+    # (taxonomy angle, score) from the camera-angle classifier
+    # (inference.classify_angle). Replaces the tagger's angle when present.
+    camera_angle: Optional[tuple[str, float]] = None
     quality_labels: tuple[str, ...] = ("usable",)
     quality_disposition: str = "review"
     quality_score: float = QUALITY_USABLE_SCORE
@@ -94,6 +98,21 @@ def _shot_scale(evidence: CandidateEvidence):
     )
 
 
+def _angle(evidence: CandidateEvidence) -> tuple[str, float, str]:
+    """(value, score, source). The classifier answers on every frame, so it
+    is held back where composition found a text-only card: a flat title card
+    has no camera. Titles over a picture keep their angle."""
+    if evidence.camera_angle is not None:
+        if evidence.wd is not None and _composition(evidence).basis == "text-only-card":
+            return "abstain", 0.0, "none"
+        value, score = evidence.camera_angle
+        return value, float(score), "angle-classifier"
+    wd = evidence.wd
+    if wd is None or wd.value("angle") == "abstain":
+        return "abstain", 0.0, "none"
+    return wd.value("angle"), wd.score("angle"), "tagger"
+
+
 def shot_scale_lane(evidence: CandidateEvidence) -> str:
     """Which lane answered shot_scale, for per-lane calibration."""
     return _shot_scale(evidence).lane
@@ -119,7 +138,7 @@ def field_sources(evidence: CandidateEvidence) -> dict[str, dict]:
         return {"source": source, "score": round(float(score), 4)}
 
     out: dict[str, dict] = {}
-    for name in ("setting", "time", "weather", "angle"):
+    for name in ("setting", "time", "weather"):
         if wd is None or wd.value(name) == "abstain":
             out[name] = dict(NO_SOURCE)
         elif name == "weather" and wd.value(name) == "none-visible":
@@ -127,6 +146,10 @@ def field_sources(evidence: CandidateEvidence) -> dict[str, dict]:
             out[name] = entry("interior-rule", wd.score(name))
         else:
             out[name] = entry("tagger", wd.score(name))
+
+    angle, angle_score, angle_source = _angle(evidence)
+    out["angle"] = (entry(angle_source, angle_score)
+                    if angle != "abstain" else dict(NO_SOURCE))
 
     scale = _shot_scale(evidence)
     out["shot_scale"] = (entry(scale.lane, scale.score)
@@ -185,13 +208,14 @@ def _tagger_fields(evidence: CandidateEvidence) -> dict:
                  "composition", "people")}
         gaps["people"] = fuse_people(None, evidence.face_count).value
         gaps["shot_scale"] = _shot_scale(evidence).value
+        gaps["angle"] = _angle(evidence)[0]
         return gaps
     return {
         "setting": wd.value("setting"),
         "time": wd.value("time"),
         "weather": wd.value("weather"),
         "shot_scale": _shot_scale(evidence).value,
-        "angle": wd.value("angle"),
+        "angle": _angle(evidence)[0],
         "composition": _composition(evidence).value,
         "people": fuse_people(wd, evidence.face_count).value,
     }
@@ -296,7 +320,7 @@ def build_scores(evidence: CandidateEvidence) -> list[dict]:
               key=lambda pair: pair[1])
     scale_verdict = _shot_scale(evidence)
     scale = (scale_verdict.value, scale_verdict.score)
-    angle = tagged("angle")
+    angle = _angle(evidence)[:2]
     fused = fuse_people(wd, evidence.face_count)
     people = (fused.value, fused.score)
     return [
