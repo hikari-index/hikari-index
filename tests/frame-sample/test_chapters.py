@@ -81,17 +81,21 @@ class TestIntervals:
     def test_a_file_without_chapters_holds_nothing(self):
         assert chapter_intervals([], 1420, run="job-1") == ([], [])
 
-    def test_a_chapter_that_is_most_of_the_file_is_not_a_theme(self):
+    def test_a_hold_must_leave_a_minute_to_pick_from(self):
         assert classify_chapter(chapter("OP", 0, 1420), 1420) is None
-        assert classify_chapter(chapter("OP", 0, 800), 1420) is None
-        # a short file: a 90 s chapter is more than half of it
-        assert classify_chapter(chapter("Chapter 01", 0, 90), 150) is None
+        assert classify_chapter(chapter("OP", 0, 1380), 1420) is None
+        # a 90 s opening in a 150 s short still holds: a minute is left
+        assert classify_chapter(chapter("Chapter 01", 0, 90), 150) == ("opening_theme", "medium", "length-and-position")
+        assert classify_chapter(chapter("OP", 0, 100), 150) is None
 
-    def test_themes_that_together_cover_most_of_the_file_hold_nothing(self):
+    def test_themes_that_together_leave_almost_nothing_hold_nothing(self):
         chapters = [chapter("OP", 0, 100), chapter("ED", 100, 200), chapter("Outro", 200, 290)]
         intervals, audit = chapter_intervals(chapters, 300, run="job-1")
         assert intervals == []
         assert all(not row["held"] and "skipped" in row for row in audit)
+        # the same three in a long file hold as usual
+        intervals, audit = chapter_intervals(chapters, 1420, run="job-1")
+        assert len(intervals) == 3
 
 
 @pytest.mark.skipif(not ffmpeg_available(), reason="FFmpeg not available")
