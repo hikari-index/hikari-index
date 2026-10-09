@@ -112,7 +112,7 @@ export const actions = {
     try {
       read = await readAll(ids);
     } catch (e) {
-      if (e instanceof ShokoError) return fail(502, { workIds: Object.fromEntries(wanted), message: e.message });
+      if (e instanceof ShokoError) return fail(502, { workIds: Object.fromEntries(wanted), budget, hold_chapters: holdChapters, message: e.message });
       throw e;
     }
     const existing = await chainsForFiles(ids);
@@ -127,7 +127,7 @@ export const actions = {
     // All or nothing: a batch that half-queued would leave the operator
     // working out which half.
     if (Object.keys(problems).length) {
-      return fail(409, { workIds: Object.fromEntries(wanted), budget, problems, message: "Nothing was queued; fix the rows marked below." });
+      return fail(409, { workIds: Object.fromEntries(wanted), budget, hold_chapters: holdChapters, problems, message: "Nothing was queued; fix the rows marked below." });
     }
     for (const r of read) {
       const workId = wanted.get(r.fileId);

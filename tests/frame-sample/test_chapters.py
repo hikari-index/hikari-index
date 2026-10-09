@@ -81,6 +81,18 @@ class TestIntervals:
     def test_a_file_without_chapters_holds_nothing(self):
         assert chapter_intervals([], 1420, run="job-1") == ([], [])
 
+    def test_a_chapter_that_is_most_of_the_file_is_not_a_theme(self):
+        assert classify_chapter(chapter("OP", 0, 1420), 1420) is None
+        assert classify_chapter(chapter("OP", 0, 800), 1420) is None
+        # a short file: a 90 s chapter is more than half of it
+        assert classify_chapter(chapter("Chapter 01", 0, 90), 150) is None
+
+    def test_themes_that_together_cover_most_of_the_file_hold_nothing(self):
+        chapters = [chapter("OP", 0, 100), chapter("ED", 100, 200), chapter("Outro", 200, 290)]
+        intervals, audit = chapter_intervals(chapters, 300, run="job-1")
+        assert intervals == []
+        assert all(not row["held"] and "skipped" in row for row in audit)
+
 
 @pytest.mark.skipif(not ffmpeg_available(), reason="FFmpeg not available")
 def test_probe_reads_the_chapters_ffmpeg_wrote(tmp_path):

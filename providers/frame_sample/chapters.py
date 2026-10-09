@@ -42,6 +42,10 @@ THEME_SECONDS = (85.0, 95.0)
 EDGE_SECONDS = 360.0
 #: A named chapter shorter than this is a marker, not a theme (seen: 0 s, 8 s).
 MIN_SECONDS = 20.0
+#: A chapter, or all held chapters together, covering more than this share
+#: of the file is not an opening or ending whatever it is called: holding
+#: it would hold the whole picture and leave the pick nothing.
+MAX_SHARE = 0.5
 
 
 def probe_chapters(video_path: str, ffprobe_path: str) -> tuple[list[dict], float]:
@@ -82,6 +86,8 @@ def classify_chapter(chapter: dict, duration: float) -> Optional[tuple[str, str,
     length = float(chapter["end"]) - float(chapter["start"])
     if length < MIN_SECONDS:
         return None
+    if duration > 0 and length > MAX_SHARE * duration:
+        return None
     if OPENING_NAMES.search(title):
         return ("opening_theme", "high", "named")
     if ENDING_NAMES.search(title):
@@ -96,7 +102,14 @@ def classify_chapter(chapter: dict, duration: float) -> Optional[tuple[str, str,
 
 def chapter_intervals(chapters: list[dict], duration: float, run: str) -> tuple[list[ExclusionInterval], list[dict]]:
     """Proposed exclusion intervals for the chapters that read as themes, and
-    an audit row per chapter saying what was decided and why."""
+    an audit row per chapter saying what was decided and why.
+
+    Holds nothing, and marks every row `held: false` with a `skipped`
+    reason, when the chapters that read as themes would together cover
+    more than MAX_SHARE of the file: that is not an opening and an ending,
+    it is a chaptering the rule does not understand, and the pick must
+    keep something to choose from.
+    """
     intervals: list[ExclusionInterval] = []
     audit: list[dict[str, Any]] = []
     for number, chapter in enumerate(chapters, start=1):
@@ -117,4 +130,11 @@ def chapter_intervals(chapters: list[dict], duration: float, run: str) -> tuple[
             row.update({"interval_id": interval.interval_id, "reason": reason,
                         "confidence": confidence, "rule": rule})
         audit.append(row)
+    held_seconds = sum(iv.end_seconds - iv.start_seconds for iv in intervals)
+    if duration > 0 and held_seconds > MAX_SHARE * duration:
+        for row in audit:
+            if row["held"]:
+                row["held"] = False
+                row["skipped"] = "the chapters that read as themes cover most of the file; nothing held"
+        return [], audit
     return intervals, audit

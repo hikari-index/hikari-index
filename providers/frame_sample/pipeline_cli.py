@@ -1618,6 +1618,37 @@ def main(argv: Optional[List[str]] = None) -> int:
     return result
 
 
+def _held_shots(held: list[CandidateRecord]) -> dict[str, list[CandidateRecord]]:
+    """Held samples by shot, each shot's samples in time order."""
+    by_shot: dict[str, list[CandidateRecord]] = {}
+    for candidate in held:
+        by_shot.setdefault(candidate.shot_id, []).append(candidate)
+    for members in by_shot.values():
+        members.sort(key=lambda c: c.timestamp_seconds)
+    return by_shot
+
+
+def _held_picks(by_shot: dict[str, list[CandidateRecord]],
+                resolved: dict[str, Optional[int]]) -> list[tuple[str, int]]:
+    """One (candidate_id, pts) per held shot: the sample nearest the shot's
+    middle that resolves to a frame, in pts order with no pts twice, as the
+    batch extractor requires. A shot none of whose samples resolve is left
+    out (its records stay in held-candidates.json without pixels)."""
+    picks: list[tuple[str, int]] = []
+    seen: set[int] = set()
+    for members in by_shot.values():
+        middle = (len(members) - 1) / 2
+        for candidate in sorted(members, key=lambda c: abs(members.index(c) - middle)):
+            pts = resolved.get(candidate.candidate_id)
+            if pts is None or pts in seen:
+                continue
+            seen.add(pts)
+            picks.append((candidate.candidate_id, pts))
+            break
+    picks.sort(key=lambda item: item[1])
+    return picks
+
+
 def _extract_held(
     held: list[CandidateRecord],
     exclusions: List[ExclusionInterval],
@@ -1656,30 +1687,18 @@ def _extract_held(
                 return iv
         return None
 
-    by_shot: dict[str, list[CandidateRecord]] = {}
-    for candidate in held:
-        by_shot.setdefault(candidate.shot_id, []).append(candidate)
-    chosen: dict[str, CandidateRecord] = {}
-    for shot_id, members in by_shot.items():
-        members.sort(key=lambda c: c.timestamp_seconds)
-        pick = members[len(members) // 2]
-        chosen[pick.candidate_id] = pick
     extracted: set[str] = set()
-    if chosen:
-        ordered = sorted(chosen.values(), key=lambda c: c.timestamp_seconds)
-        resolved = _resolve_pts_bulk(
-            input_path, [c.timestamp_seconds for c in ordered], time_base, ffprobe_path,
-        )
-        batch: list[tuple[str, int]] = []
-        seen: set[int] = set()
-        for candidate, pts in sorted(
-            ((c, p) for c, p in zip(ordered, resolved) if p is not None),
-            key=lambda item: item[1],
-        ):
-            if pts in seen:
-                continue
-            seen.add(pts)
-            batch.append((candidate.candidate_id, pts))
+    by_shot = _held_shots(held)
+    if held:
+        # Every held sample's PTS in one metadata pass, so a shot whose middle
+        # sample has no frame (the picture ending before the container does)
+        # can fall back to its next-nearest sample instead of losing the shot.
+        ordered = sorted(held, key=lambda c: c.timestamp_seconds)
+        resolved = dict(zip(
+            (c.candidate_id for c in ordered),
+            _resolve_pts_bulk(input_path, [c.timestamp_seconds for c in ordered], time_base, ffprobe_path),
+        ))
+        batch = _held_picks(by_shot, resolved)
         if batch:
             held_stage = Path(tempfile.mkdtemp(prefix=f".{bundle_id}.held.", dir=work_root))
             try:
@@ -1781,6 +1800,11 @@ def _run_pipeline(args, output_root: Path, audit_root: Path,
         "candidates": [candidate.to_dict() for candidate in held],
     }))
     if not cleared:
+        if held:
+            raise RuntimeError(
+                "every sampled frame sits inside a held interval (the file's "
+                "chapters, or the exclusions given), so there is nothing to "
+                "pick from; onboard it again without the hold")
         raise RuntimeError("selection produced no cleared candidates")
 
     stream_index, time_base = _probe_stream(input_path, args.ffprobe_path)
