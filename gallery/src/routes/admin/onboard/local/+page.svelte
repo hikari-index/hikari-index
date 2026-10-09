@@ -114,6 +114,7 @@
       <label class="choice"><input type="radio" name="budget" value={key} bind:group={budget} /><span>{b.label} <span class="muted">· {b.note}</span></span></label>
     {/each}
     {#if bad.budget}<span class="why bad" role="alert">{bad.budget}</span>{/if}
+    <label class="hold"><input type="checkbox" name="hold_chapters" checked={sent().hold_chapters === "on" || sent().hold_chapters === true} /> <span>Hold the opening and ending, if the file has chapters for them <span class="muted">· the frames are kept in the pool, not picked; a chapter named OP or ED, or 85 to 95 seconds long near either end</span></span></label>
   </fieldset>
 
   <h2>What will run</h2>

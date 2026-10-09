@@ -101,6 +101,7 @@ export const actions = {
     const ids = fileIds(form.getAll("file"));
     const budget = String(form.get("budget") ?? "balanced");
     if (!Object.hasOwn(BUDGETS, budget)) return fail(400, { message: "Choose fewer, balanced or more." });
+    const holdChapters = form.get("hold_chapters") === "on";
     const wanted = new Map(ids.map((id) => [id, String(form.get(`work_id-${id}`) ?? "").trim().toLowerCase()]));
     const problems = {};
     for (const [id, w] of wanted) if (!WORK_ID.test(w)) problems[id] = "The work id takes lowercase letters, digits and dashes, 2 to 72 characters.";
@@ -111,7 +112,7 @@ export const actions = {
     try {
       read = await readAll(ids);
     } catch (e) {
-      if (e instanceof ShokoError) return fail(502, { workIds: Object.fromEntries(wanted), message: e.message });
+      if (e instanceof ShokoError) return fail(502, { workIds: Object.fromEntries(wanted), budget, hold_chapters: holdChapters, message: e.message });
       throw e;
     }
     const existing = await chainsForFiles(ids);
@@ -126,7 +127,7 @@ export const actions = {
     // All or nothing: a batch that half-queued would leave the operator
     // working out which half.
     if (Object.keys(problems).length) {
-      return fail(409, { workIds: Object.fromEntries(wanted), budget, problems, message: "Nothing was queued; fix the rows marked below." });
+      return fail(409, { workIds: Object.fromEntries(wanted), budget, hold_chapters: holdChapters, problems, message: "Nothing was queued; fix the rows marked below." });
     }
     for (const r of read) {
       const workId = wanted.get(r.fileId);
@@ -141,6 +142,7 @@ export const actions = {
           source,
           policy: POLICY,
           budget: { choice: budget, factor: BUDGETS[budget].factor },
+          hold_chapters: holdChapters,
           shoko: { series_name: r.series.Name, anidb_type: r.series.AniDB?.Type ?? null },
         },
         requestedBy: locals.admin?.user ?? null,

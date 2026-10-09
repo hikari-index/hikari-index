@@ -22,6 +22,7 @@ from typing import Any, List, Optional
 
 from . import bundle as bundle_steps
 from . import composition, frame_quality
+from .chapters import chapter_intervals, probe_chapters
 from .exclusion import ExclusionInterval, intervals_from_dicts
 from .sampler import CandidateRecord, FrameSampler, SamplerParams
 from .scene_score import PROGRESS_INTERVAL_SECONDS
@@ -1450,6 +1451,12 @@ def _parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
     parser.add_argument("--library-id", default="hikari-library")
     parser.add_argument("--source-fingerprint-ref", required=True)
     parser.add_argument("--exclusions")
+    parser.add_argument("--hold-chapters", action="store_true",
+                        help="read the file's chapter markers and hold the "
+                             "frames inside chapters that read as an opening "
+                             "or ending (named, or 85-95 s near either end): "
+                             "extracted into the surplus, kept out of the pick "
+                             "(#47). Proposed intervals, never approved ones.")
     parser.add_argument("--density", type=float, default=1.0,
                         help="multiplier on the duration-derived samples per "
                              "shot; 1.0 is one sample per 2 s of shot, capped "
@@ -1561,6 +1568,26 @@ def main(argv: Optional[List[str]] = None) -> int:
         exclusions = intervals_from_dicts(
             _load_object(args.exclusions, "exclusions").get("exclusion_intervals", [])
         )
+    chapter_audit: Optional[dict] = None
+    if args.hold_chapters:
+        if args.passage_start is not None:
+            print("frame-sample-pipeline: --hold-chapters reads the source's chapter "
+                  "times, which a passage slice does not keep", file=sys.stderr)
+            return 2
+        chapters, chapter_duration = probe_chapters(args.input, args.ffprobe_path)
+        proposed, rows = chapter_intervals(chapters, chapter_duration, args.job_id)
+        exclusions = list(exclusions) + proposed
+        chapter_audit = {
+            "chapters": rows,
+            "duration_seconds": round(chapter_duration, 3),
+            "held_intervals": [iv.to_dict() for iv in proposed],
+            "note": "chapters that read as an opening or ending became proposed "
+                    "exclusion intervals (frame_sample.chapters); the frames inside "
+                    "them are extracted into the surplus and listed in "
+                    "held-candidates.json, and the picker leaves them unless pinned",
+        }
+        print(f"[chapters] {len(chapters)} chapters, {len(proposed)} held as openings "
+              f"or endings", flush=True)
 
     output_root = Path(args.output_root)
     output_root.mkdir(parents=True, exist_ok=True)
@@ -1570,6 +1597,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     work_root = output_root / "work"
     audit_root.mkdir()
     work_root.mkdir()
+    if chapter_audit is not None:
+        (audit_root / "chapters.json").write_bytes(_json_bytes(chapter_audit))
     try:
         result = _run_pipeline(args, output_root, audit_root, work_root,
                                source_identity, exclusions)
@@ -1587,6 +1616,121 @@ def main(argv: Optional[List[str]] = None) -> int:
     # audit trail live outside the work root.
     shutil.rmtree(work_root, ignore_errors=True)
     return result
+
+
+def _held_shots(held: list[CandidateRecord]) -> dict[str, list[CandidateRecord]]:
+    """Held samples by shot, each shot's samples in time order."""
+    by_shot: dict[str, list[CandidateRecord]] = {}
+    for candidate in held:
+        by_shot.setdefault(candidate.shot_id, []).append(candidate)
+    for members in by_shot.values():
+        members.sort(key=lambda c: c.timestamp_seconds)
+    return by_shot
+
+
+def _held_picks(by_shot: dict[str, list[CandidateRecord]],
+                resolved: dict[str, Optional[int]]) -> list[tuple[str, int]]:
+    """One (candidate_id, pts) per held shot: the sample nearest the shot's
+    middle that resolves to a frame, in pts order with no pts twice, as the
+    batch extractor requires. A shot none of whose samples resolve is left
+    out (its records stay in held-candidates.json without pixels)."""
+    picks: list[tuple[str, int]] = []
+    seen: set[int] = set()
+    for members in by_shot.values():
+        middle = (len(members) - 1) / 2
+        for candidate in sorted(members, key=lambda c: abs(members.index(c) - middle)):
+            pts = resolved.get(candidate.candidate_id)
+            if pts is None or pts in seen:
+                continue
+            seen.add(pts)
+            picks.append((candidate.candidate_id, pts))
+            break
+    picks.sort(key=lambda item: item[1])
+    return picks
+
+
+def _extract_held(
+    held: list[CandidateRecord],
+    exclusions: List[ExclusionInterval],
+    input_path: str,
+    time_base: str,
+    work_root: Path,
+    surplus_root: Path,
+    audit_root: Path,
+    bundle_id: str,
+    ffmpeg_path: str,
+    ffprobe_path: str,
+    color_filter: str,
+) -> int:
+    """Pull one frame per held shot into the surplus and record them all.
+
+    A held candidate (inside a proposed exclusion interval, today a chapter
+    that reads as an opening or ending, #47) was sampled and never
+    extracted: `held-candidates.json` was timestamps only. Holding is meant
+    to keep frames out of the pick, not out of reach, so the middle sample
+    of each held shot is extracted exactly like any other frame and placed
+    in the surplus beside the breadth-omitted ones. There the pool page
+    lists it, a lock brings it into the next pick, and the analyze stage
+    embeds it with the rest of the surplus. One per shot keeps the cost to
+    a few dozen frames an episode: an opening is a few dozen shots, and a
+    person choosing from it wants one frame of each, not every sample.
+
+    Rewrites `held-candidates.json` with the interval each frame sat in and
+    whether its pixels were pulled. Returns how many were.
+    """
+    rows: list[dict] = []
+    proposed = [iv for iv in exclusions if iv.is_proposed]
+
+    def interval_of(timestamp: float) -> Optional[ExclusionInterval]:
+        for iv in proposed:
+            if iv.start_seconds <= timestamp <= iv.end_seconds:
+                return iv
+        return None
+
+    extracted: set[str] = set()
+    by_shot = _held_shots(held)
+    if held:
+        # Every held sample's PTS in one metadata pass, so a shot whose middle
+        # sample has no frame (the picture ending before the container does)
+        # can fall back to its next-nearest sample instead of losing the shot.
+        ordered = sorted(held, key=lambda c: c.timestamp_seconds)
+        resolved = dict(zip(
+            (c.candidate_id for c in ordered),
+            _resolve_pts_bulk(input_path, [c.timestamp_seconds for c in ordered], time_base, ffprobe_path),
+        ))
+        batch = _held_picks(by_shot, resolved)
+        if batch:
+            held_stage = Path(tempfile.mkdtemp(prefix=f".{bundle_id}.held.", dir=work_root))
+            try:
+                _extract_batch(input_path, batch, held_stage, ffmpeg_path, color_filter, time_base)
+                surplus_root.mkdir(parents=True, exist_ok=True)
+                for candidate_id, _pts in batch:
+                    produced = held_stage / f"{candidate_id}.png"
+                    if produced.is_file() and produced.stat().st_size > 0:
+                        produced.rename(surplus_root / produced.name)
+                        extracted.add(candidate_id)
+            finally:
+                shutil.rmtree(held_stage, ignore_errors=True)
+            print(f"[extract] held {len(held)} samples in {len(by_shot)} shots; "
+                  f"{len(extracted)} frames pulled into the surplus", flush=True)
+    for candidate in sorted(held, key=lambda c: c.timestamp_seconds):
+        iv = interval_of(candidate.timestamp_seconds)
+        row = candidate.to_dict()
+        row.update({
+            "interval_id": iv.interval_id if iv else None,
+            "reason": iv.reason if iv else None,
+            "pixel": candidate.candidate_id in extracted,
+        })
+        rows.append(row)
+    (audit_root / "held-candidates.json").write_bytes(_json_bytes({
+        "pixel_artifacts_published": bool(extracted),
+        "pixel_location": f"surplus/{bundle_id}",
+        "note": "frames inside a proposed exclusion interval: sampled, kept out "
+                "of the pick, and (one per shot, pixel: true) extracted into the "
+                "surplus so the pool shows them and a lock brings one in",
+        "candidates": rows,
+    }))
+    return len(extracted)
 
 
 def _run_pipeline(args, output_root: Path, audit_root: Path,
@@ -1656,6 +1800,11 @@ def _run_pipeline(args, output_root: Path, audit_root: Path,
         "candidates": [candidate.to_dict() for candidate in held],
     }))
     if not cleared:
+        if held:
+            raise RuntimeError(
+                "every sampled frame sits inside a held interval (the file's "
+                "chapters, or the exclusions given), so there is nothing to "
+                "pick from; onboard it again without the hold")
         raise RuntimeError("selection produced no cleared candidates")
 
     stream_index, time_base = _probe_stream(input_path, args.ffprobe_path)
@@ -1694,6 +1843,11 @@ def _run_pipeline(args, output_root: Path, audit_root: Path,
         source_duration=float(stream_probe.get("duration") or 0.0),
     )
     published = result["published"]
+    held_extracted = _extract_held(
+        held, exclusions, input_path, time_base, work_root, surplus_root,
+        audit_root, args.bundle_id, args.ffmpeg_path, args.ffprobe_path,
+        color_filter,
+    )
     extracted_candidates = result["extracted_candidates"]
     quality_omissions = result["quality_omissions"]
     redundant_omissions = result["redundant_omissions"]
@@ -1833,6 +1987,9 @@ def _run_pipeline(args, output_root: Path, audit_root: Path,
         "published_candidates": len(published),
         "published_shots": sum(1 for shot in result["shot_audit"] if shot["published"]),
         "held_candidates": len(held),
+        # Held frames pulled into the surplus (one per held shot) so the pool
+        # shows them and a lock can bring one in; the rest are timestamps only.
+        "held_extracted": held_extracted,
         "quality_omitted_candidates": len(quality_omissions),
         # Published, but luma-extreme and featureless enough that the floor
         # questioned them. Nothing at this layer tells a title card from a

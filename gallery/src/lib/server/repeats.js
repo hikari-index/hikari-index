@@ -68,6 +68,17 @@ export async function readPool(workId, bundleId) {
     rows = Array.isArray(rows) ? rows : Object.values(rows)[0];
     for (const r of rows || []) if (!times.has(r.candidate_id) && r.timestamp_seconds != null) times.set(r.candidate_id, r.timestamp_seconds);
   }
+  // Held frames (#47) with their pixels in the surplus are pool frames too:
+  // they are embedded with the rest, and a pinned one is a still that can
+  // repeat in a sibling. Rows without pixels are timestamps only and are
+  // not expected to have an embedding.
+  const heldAudit = join(workDir, "extract", "audit", "held-candidates.json");
+  if (existsSync(heldAudit)) {
+    const doc = await readJson(heldAudit);
+    for (const r of (doc && doc.pixel_artifacts_published && doc.candidates) || []) {
+      if (r.pixel && !times.has(r.candidate_id) && r.timestamp_seconds != null) times.set(r.candidate_id, r.timestamp_seconds);
+    }
+  }
   const files = [];
   for (const lane of ["embeddings", "surplus-embeddings"]) {
     const dir = join(workDir, "analyze", lane, "artifacts");

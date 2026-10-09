@@ -79,6 +79,20 @@ function readFrames(workId) {
       out.push({ candidate: r.candidate_id, ts: r.timestamp_seconds ?? null, shot: r.shot_id ?? null, source: "surplus", master });
     }
   }
+  // Held frames (#47): inside an opening or ending chapter, extracted into
+  // the surplus and kept out of the pick. Listed with why, so the pool
+  // page can say so; a lock brings one in like any surplus frame.
+  const heldAudit = join(root, "extract", "audit", "held-candidates.json");
+  if (surplusDir && existsSync(heldAudit)) {
+    const doc = readJson(heldAudit);
+    const surplusReal = realpathSync(surplusDir);
+    for (const r of (doc && doc.pixel_artifacts_published && doc.candidates) || []) {
+      if (!r.pixel || !CANDIDATE.test(r.candidate_id ?? "")) continue;
+      const master = insideRuns(join(surplusDir, `${r.candidate_id}.png`));
+      if (!master || !master.startsWith(surplusReal + sep)) continue;
+      out.push({ candidate: r.candidate_id, ts: r.timestamp_seconds ?? null, shot: r.shot_id ?? null, source: "surplus", master, held: r.reason === "ending_theme" ? "ending" : r.reason === "opening_theme" ? "opening" : "held" });
+    }
+  }
   out.sort((a, b) => (a.ts ?? 1e9) - (b.ts ?? 1e9) || a.candidate.localeCompare(b.candidate));
   return out;
 }

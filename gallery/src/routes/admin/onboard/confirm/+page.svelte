@@ -103,6 +103,7 @@
           <label><input type="radio" name="budget" value={key} bind:group={budget} /> {b.label} <span class="muted">· {b.note}</span></label>
         {/each}
         <p class="meta">The pick chooses from every frame the extraction kept, so this costs no extra decoding; each extra still does still get its labels, palette and web images (a few seconds each).</p>
+        <label class="hold"><input type="checkbox" name="hold_chapters" checked={form?.hold_chapters ?? false} /> <span>Hold the opening and ending, if the file has chapters for them <span class="muted">· the frames are kept in the pool, not picked; a chapter named OP or ED, or 85 to 95 seconds long near either end</span></span></label>
       </fieldset>
 
       <p class="sum">

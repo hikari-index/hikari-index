@@ -68,6 +68,7 @@ export const actions = {
       title: text("title"),
       group: text("group"),
       budget: text("budget") || "balanced",
+      hold_chapters: form.get("hold_chapters") === "on",
       rows: Object.fromEntries(rows.map((r) => [r.i, {
         pick: form.get(`pick-${r.i}`) != null,
         episode: text(`episode-${r.i}`).trim(),
@@ -127,6 +128,7 @@ export const actions = {
         source: localSource(listing.root, f.path),
         policy: POLICY,
         budget: { choice: values.budget, factor: BUDGETS[values.budget].factor },
+        hold_chapters: values.hold_chapters,
         local: { title: placed.seriesTitle, group: group || null, folder: listing.id },
       }),
     });

@@ -59,6 +59,28 @@ def test_partition_excludes_held_pixels():
     assert [candidate.candidate_id for candidate in held] == ["cand-0003"]
 
 
+def test_held_picks_take_the_middle_sample_that_resolves_once_per_shot():
+    from frame_sample.pipeline_cli import _held_picks, _held_shots
+    held = [
+        _candidate(1, 1.0, "held_unresolved", shot=1, timestamp=1.0),
+        _candidate(2, 1.0, "held_unresolved", shot=1, timestamp=2.0),
+        _candidate(3, 1.0, "held_unresolved", shot=1, timestamp=3.0),
+        _candidate(4, 1.0, "held_unresolved", shot=2, timestamp=7.0),
+        _candidate(5, 1.0, "held_unresolved", shot=2, timestamp=8.0),
+    ]
+    by_shot = _held_shots(held)
+    # shot-001's middle sample (cand-0002) resolves: it is the pick
+    resolved = {"cand-0001": 1000, "cand-0002": 2000, "cand-0003": 3000, "cand-0004": 7000, "cand-0005": 8000}
+    assert _held_picks(by_shot, resolved) == [("cand-0002", 2000), ("cand-0004", 7000)]
+    # the middle sample has no frame: the next-nearest that does is taken
+    resolved["cand-0002"] = None
+    assert [c for c, _ in _held_picks(by_shot, resolved)][0] in ("cand-0001", "cand-0003")
+    # no sample of a shot resolves: the shot is left out, the other stays
+    assert _held_picks(by_shot, {"cand-0004": 7000}) == [("cand-0004", 7000)]
+    # two samples on one pts: the pts is used once
+    assert _held_picks(by_shot, {"cand-0002": 5000, "cand-0004": 5000, "cand-0005": 8000}) == [("cand-0002", 5000), ("cand-0005", 8000)]
+
+
 def test_the_bundle_digest_follows_the_manifest_and_nothing_else():
     assert _bundle_digest("a" * 64) == _bundle_digest("a" * 64)
     assert _bundle_digest("a" * 64) != _bundle_digest("b" * 64)
