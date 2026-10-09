@@ -424,6 +424,10 @@ def extract(job: dict, should_stop) -> dict:
         "--job-id", str(job["id"]),
         "--source-fingerprint-ref", fingerprint,
     ]
+    # Hold the frames inside opening and ending chapters (#47): an
+    # onboarding choice, carried in the job's params.
+    if params.get("hold_chapters"):
+        cmd.append("--hold-chapters")
     code = run_logged(cmd, log, should_stop, f"extract {work}")
     ready = root / "PIPELINE_READY.json"
     summary = json.loads(ready.read_text()) if ready.is_file() else None
@@ -446,6 +450,8 @@ def extract(job: dict, should_stop) -> dict:
         "bundle_id": bundle_id,
         "published_candidates": summary.get("published_candidates"),
         "published_shots": summary.get("published_shots"),
+        "held_candidates": summary.get("held_candidates"),
+        "held_extracted": summary.get("held_extracted"),
         "phase_seconds": summary.get("phase_seconds"),
         "log": str(log.relative_to(OUTPUT)),
     }

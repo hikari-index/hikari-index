@@ -47,7 +47,7 @@ def derived_budget(run_root: Path) -> int:
     return min(300, max(35, round(len(shots) * 0.15)))
 
 
-def load_run(run_root: Path, results_dir: Path):
+def load_run(run_root: Path, results_dir: Path, pins: list[str] = ()):
     bundle = only(run_root / "prepared")
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
     cands, published = {}, []
@@ -80,6 +80,20 @@ def load_run(run_root: Path, results_dir: Path):
             d = json.loads(f.read_text(encoding="utf-8"))
             emb[d["candidate_id"]] = d["embedding"]
             surplus_n += 1
+    # Held frames (inside an opening or ending chapter, #47) sit in the
+    # surplus with their embeddings but are not the pool: the picker never
+    # sees them unless the operator pinned one, which is the whole point of
+    # keeping their pixels.
+    held_path = run_root / "audit" / "held-candidates.json"
+    if pins and held_path.is_file():
+        held_doc = json.loads(held_path.read_text(encoding="utf-8"))
+        if held_doc.get("pixel_artifacts_published"):
+            wanted = set(pins)
+            for r in held_doc.get("candidates", []):
+                if r.get("pixel") and r["candidate_id"] in wanted:
+                    cands[r["candidate_id"]] = {"ts": r["timestamp_seconds"],
+                                                "shot": r["shot_id"],
+                                                "score": r.get("scene_score", 0.0)}
 
     pal = {}
     completed = run_root / "results" / "completed"
@@ -130,7 +144,7 @@ def main() -> int:
     if not 0.1 <= args.budget_factor <= 3.0:
         ap.error("--budget-factor must be between 0.1 and 3")
 
-    keys, E, P, cat, cands, published, info = load_run(args.run_root, args.results_dir)
+    keys, E, P, cat, cands, published, info = load_run(args.run_root, args.results_dir, args.pin)
     duration = max(c["ts"] for c in cands.values()) - min(c["ts"] for c in cands.values())
     # On a derived-budget run the pipeline already applied the 0.15-per-shot
     # rule and published exactly that many, so its published count IS the

@@ -32,6 +32,7 @@
 <p class="meta intro">
   The extraction kept {data.pool} frames for this work; {data.frames.length} of them never became stills. Previews are made from the masters as you scroll, so a page takes a moment the first time.
   {#if data.discarded}This work's extra frames were discarded after review and a re-run is refused after that, so frames here can be looked at but not brought in. To choose from the whole pool again, remove the work and onboard it again.{:else}To bring a frame in: <strong>lock</strong> it, then <a href="/admin/jobs">Re-run</a> the work; the picker keeps locked frames in the set, and the frame gets its labels and web images with the rest.{/if}
+  {#if data.frames.some((f) => f.held)}A frame marked <strong>held</strong> sat inside a chapter that read as the opening or ending, and the pick was told to leave it; lock it to bring it in all the same.{/if}
 </p>
 {#if form?.message}<p class="note" role="status">{form.message}</p>{/if}
 
@@ -54,7 +55,7 @@
       <span class="frame">
         <img src={`/admin/pool/${data.work.id}/${f.candidate}.jpg`} width="320" height="180" loading="lazy" alt={`${data.work.label}, pool frame at ${formatTime(f.ts ?? 0)}`} />
       </span>
-      <span class="cap mono"><span class="time">{f.ts != null ? formatTime(f.ts) : "?"}</span> <span class="src">{f.candidate}{f.source === "surplus" ? " · extra" : ""}</span></span>
+      <span class="cap mono"><span class="time">{f.ts != null ? formatTime(f.ts) : "?"}</span> <span class="src">{f.candidate}{f.held ? ` · held: ${f.held}` : f.source === "surplus" ? " · extra" : ""}</span></span>
       {#if !data.discarded}
         <div class="controls">
           <form method="POST" action="?/pin" use:enhance={afterAction}>

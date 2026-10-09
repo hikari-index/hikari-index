@@ -35,6 +35,7 @@ export const actions = {
       group: text("group"),
       work_id: text("work_id").trim().toLowerCase(),
       budget: text("budget") || "balanced",
+      hold_chapters: form.get("hold_chapters") === "on",
     };
     const problems = {};
     // Only a folder a worker has reported: a worker from before this page
@@ -71,6 +72,7 @@ export const actions = {
         source: localSource(values.root, path),
         policy: POLICY,
         budget: { choice: values.budget, factor: BUDGETS[values.budget].factor },
+        hold_chapters: values.hold_chapters,
         local: { title: placed.seriesTitle, group: group || null },
       }),
     });

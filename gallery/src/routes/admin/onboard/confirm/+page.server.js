@@ -101,6 +101,7 @@ export const actions = {
     const ids = fileIds(form.getAll("file"));
     const budget = String(form.get("budget") ?? "balanced");
     if (!Object.hasOwn(BUDGETS, budget)) return fail(400, { message: "Choose fewer, balanced or more." });
+    const holdChapters = form.get("hold_chapters") === "on";
     const wanted = new Map(ids.map((id) => [id, String(form.get(`work_id-${id}`) ?? "").trim().toLowerCase()]));
     const problems = {};
     for (const [id, w] of wanted) if (!WORK_ID.test(w)) problems[id] = "The work id takes lowercase letters, digits and dashes, 2 to 72 characters.";
@@ -141,6 +142,7 @@ export const actions = {
           source,
           policy: POLICY,
           budget: { choice: budget, factor: BUDGETS[budget].factor },
+          hold_chapters: holdChapters,
           shoko: { series_name: r.series.Name, anidb_type: r.series.AniDB?.Type ?? null },
         },
         requestedBy: locals.admin?.user ?? null,

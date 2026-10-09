@@ -220,12 +220,21 @@ def label_picked_surplus(sel, bundle, run_root, surplus, out, work, step, should
     rows = json.loads(audit_path.read_text()) if audit_path.is_file() else []
     rows = rows if isinstance(rows, list) else next(iter(rows.values()), [])
     audit = {r["candidate_id"]: r for r in rows}
+    # A pinned held frame (#47) is a surplus frame too, listed in
+    # held-candidates.json rather than the breadth record.
+    held_path = run_root / "audit" / "held-candidates.json"
+    if held_path.is_file():
+        held_doc = json.loads(held_path.read_text())
+        if held_doc.get("pixel_artifacts_published"):
+            for r in held_doc.get("candidates", []):
+                if r.get("pixel"):
+                    audit.setdefault(r["candidate_id"], r)
     width = int(manifest["candidates"][0].get("width") or 0) if manifest["candidates"] else 0
     candidates = []
     for cid in picked:
         r = audit.get(cid)
         if r is None:
-            raise StageError("input", f"picked surplus frame {cid} has no breadth-omitted audit record")
+            raise StageError("input", f"picked surplus frame {cid} has no breadth-omitted or held audit record")
         candidates.append({"candidate_id": cid, "shot_id": r["shot_id"], "width": width,
                            "frame_quality": r.get("frame_quality") or {}})
     picks_file = out / "surplus-picks.json"
