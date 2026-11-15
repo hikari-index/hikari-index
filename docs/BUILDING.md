@@ -36,6 +36,42 @@ The CPU worker stands alone:
 docker build -f containers/cpu-worker/Dockerfile --build-arg HIKARI_WORKER_VERSION=<tag> -t hikari-index/cpu-worker:<tag> .
 ```
 
+## The database version
+
+What this repository starts a database with is one image at one digest:
+the `db` service in `compose.yaml`, `pgvector/pgvector:pg18` (PostgreSQL
+18.7 and pgvector 0.8.7 since 2026-11). `compose.db.yaml`, the
+development database, names the same image at the same digest.
+
+An install gets a new pin when its copy of `compose.yaml` does, which is
+the `git pull` in the docs' update steps; changing `HIKARI_VERSION` alone
+leaves the database where it was. A container template you fill in
+yourself is outside this file: one that names the image by its moving
+tag (`pgvector/pgvector:pg18`, as the unRAID pgvector-18 app does) gets
+whatever the tag holds when the container is updated, which can be a
+minor version ahead of or behind the pin. To hold such a container to
+the pin, put the image with its digest, exactly as `compose.yaml` has
+it, in the template's image field.
+
+To move to a newer database: `docker pull pgvector/pgvector:pg18`, read
+its digest (`docker inspect --format '{{index .RepoDigests 0}}' pgvector/pgvector:pg18`)
+and put it in every file that names the image, together. Within
+PostgreSQL 18 a data folder opens on the newer server as it is. pgvector
+asks for one more step after it is upgraded, `ALTER EXTENSION vector
+UPDATE` in the database; the gallery runs it at start, after its
+migrations, so in a normal install nobody types it. It needs a gallery
+that writes (not the read-only build) and a database login that owns the
+extension, which the login that created it does; when it cannot, the
+gallery says why in its log and carries on. A move to PostgreSQL 19 is a
+dump and restore and a release of its own.
+
+Checked on 2026-11-15 with a database of 180 stills made at the previous
+pin (18.6, 0.8.6): it opened at this one under the released 1.4.0
+gallery, which leaves pgvector at 0.8.6; this gallery moved it to 0.8.7;
+and going back to the previous pin and the 1.4.0 gallery worked. The
+distances between stills came out the same at every step. Not checked:
+mood search and an import after going back.
+
 The inference base and the CPU worker both download the models from
 Hugging Face at the same pinned revisions and check the sha256 of every
 weight file and of the tagger's tag list (configuration and tokenizer files come with the pinned revision
