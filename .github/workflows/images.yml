@@ -121,9 +121,8 @@ jobs:
           cache-to: type=gha,scope=${{ matrix.image }},mode=min
 
   # The all-in-one image (containers/all-in-one): the gallery, worker and
-  # text encoder built again here from the same commit (from the cache the
-  # job above fills), then put together with the database. amd64 only, as
-  # the worker is. After the job above, so its cache is there to use.
+  # text encoder images' files, put together with the database. amd64
+  # only, as the worker is. After the job above, which makes those images.
   all-in-one:
     needs: build
     runs-on: ubuntu-latest
@@ -168,6 +167,38 @@ jobs:
             org.opencontainers.image.title=hikari-index all-in-one
             org.opencontainers.image.licenses=AGPL-3.0-or-later
 
+      # Where the gallery, worker and text encoder inside it come from.
+      # A published all-in-one must hold exactly the files of the images
+      # published beside it, so on main and on a release it is put
+      # together from the images the job above just pushed (by their
+      # commit or version tag, which never move), never from a second
+      # build of them. A pull request pushes nothing, so there the three
+      # are built again from the checkout, which only proves the image
+      # still builds.
+      - name: Parts
+        id: parts
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/v}"
+          elif [[ "$GITHUB_EVENT_NAME" != pull_request && "$GITHUB_REF" == refs/heads/main ]]; then
+            tag="sha-${GITHUB_SHA::7}"
+          else
+            tag=""
+          fi
+          {
+            echo 'set<<END_OF_SET'
+            for part in gallery worker text-encoder; do
+              if [[ -n "$tag" ]]; then
+                echo "all-in-one.contexts.$part=docker-image://ghcr.io/hikari-index/$part:$tag"
+              else
+                echo "$part.cache-from=type=gha,scope=$part"
+              fi
+            done
+            echo 'all-in-one.cache-from=type=gha,scope=all-in-one'
+            echo 'all-in-one.cache-to=type=gha,scope=all-in-one,mode=min'
+            echo 'END_OF_SET'
+          } >> "$GITHUB_OUTPUT"
+
       - uses: docker/bake-action@v6
         env:
           VERSION: ${{ steps.version.outputs.value }}
@@ -178,12 +209,7 @@ jobs:
             ${{ steps.meta.outputs.bake-file }}
           targets: all-in-one
           push: ${{ github.event_name != 'pull_request' }}
-          set: |
-            gallery.cache-from=type=gha,scope=gallery
-            worker.cache-from=type=gha,scope=worker
-            text-encoder.cache-from=type=gha,scope=text-encoder
-            all-in-one.cache-from=type=gha,scope=all-in-one
-            all-in-one.cache-to=type=gha,scope=all-in-one,mode=min
+          set: ${{ steps.parts.outputs.set }}
 
   release:
     needs: [build, all-in-one]
