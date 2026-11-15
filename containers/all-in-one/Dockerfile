@@ -48,24 +48,28 @@ ARG S6_OVERLAY_X86_64_SHA256
 
 USER root
 
-# PostgreSQL 18 and pgvector from the PostgreSQL project's own package
-# repository. The minor version is whatever 18.x is current at build, as
-# the compose install's `pg18` image tag is; `postgres --version` in the
-# image says which. The repository's signing key is the copy Debian ships
-# in postgresql-common, so the build fetches nothing from postgresql.org's
-# website (which dropped the connection often enough to fail builds).
+# PostgreSQL 18 and pgvector, installed the way each project documents:
+# the PostgreSQL apt repository set up by its own script (the Quickstart at
+# https://wiki.postgresql.org/wiki/Apt: install postgresql-common, run
+# apt.postgresql.org.sh; the script uses the signing key that package
+# ships, so nothing is fetched from postgresql.org's website), then
+# pgvector's APT method (`postgresql-18-pgvector`, its README's
+# "Additional Installation Methods"). The image compose.yaml uses,
+# pgvector/pgvector:pg18, is the postgres image (the same PostgreSQL
+# packages) with pgvector compiled in; it is pinned by digest and this is
+# not, so the two can be a minor version apart (`dpkg-query -W
+# 'postgresql-18*'` in the image says what it has).
+# init-db runs pgvector's documented upgrade step for that reason.
 # The en_US.UTF-8 locale is the one the official
 # postgres image creates its databases with, so text sorts the same here.
 RUN set -eux; \
     apt-get update; \
     apt-get install --yes --no-install-recommends locales tzdata xz-utils postgresql-common; \
     localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8; \
-    test -s /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc; \
-    echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' \
-        > /etc/apt/sources.list.d/pgdg.list; \
     sed -ri 's/^#?(create_main_cluster) .*$/\1 = false/' /etc/postgresql-common/createcluster.conf; \
     grep -qx 'create_main_cluster = false' /etc/postgresql-common/createcluster.conf; \
-    apt-get update; \
+    /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y; \
+    grep -q '^Suites: bookworm-pgdg$' /etc/apt/sources.list.d/pgdg.sources; \
     apt-get install --yes --no-install-recommends postgresql-18 postgresql-18-pgvector; \
     rm -rf /var/lib/apt/lists/*; \
     /usr/lib/postgresql/18/bin/postgres --version; \
