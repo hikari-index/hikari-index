@@ -13,8 +13,12 @@ variable "VERSION" {
   default = "local"
 }
 
-# Filled in by the release workflow (tags and labels); empty here.
-target "docker-metadata-action" {}
+# The image's tags. The release workflow replaces this target with the
+# registry's tags and labels; a tag set on "all-in-one" itself would win
+# over those, so the local name lives here.
+target "docker-metadata-action" {
+  tags = ["hikari-index/hikari-index:${VERSION}"]
+}
 
 target "gallery" {
   context = "gallery"
@@ -48,7 +52,6 @@ target "all-in-one" {
   args = {
     HIKARI_GALLERY_VERSION = "gallery-${VERSION}"
   }
-  tags = ["hikari-index/hikari-index:${VERSION}"]
 }
 
 group "default" {

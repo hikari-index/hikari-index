@@ -29,11 +29,18 @@ usermod --non-unique --uid "$PUID" hikari
 install --directory --owner hikari --group hikari /run/postgresql /data/runs
 install --directory --owner hikari --group hikari --mode 0700 /config/db
 install --directory --owner hikari --group hikari --mode 0750 /config/backups /config/worker-tokens
-# Only what is owned by someone else is handed over, so a restart does not
-# walk a large library; a changed PUID walks it once.
-for dir in /config /data /images; do
-    find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown --no-dereference hikari:hikari {} +
-done
+# Everything in the three folders is handed to that user once, and again
+# only when PUID or PGID changes: walking a large library on every start
+# would wake the disks and hold the start up for nothing.
+chown hikari:hikari /config /data /images
+if [ "$(cat /config/.owner 2>/dev/null || true)" != "$PUID:$PGID" ]; then
+    log "handing the config, data and images folders to user $PUID:$PGID (once; a large library takes a while)"
+    for dir in /config /data /images; do
+        find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown --no-dereference hikari:hikari {} +
+    done
+    echo "$PUID:$PGID" > /config/.owner.new
+    mv /config/.owner.new /config/.owner
+fi
 for dir in /config /data /data/runs /images; do
     s6-setuidgid hikari test -w "$dir" || fail "user $PUID cannot write to $dir"
 done
@@ -66,7 +73,7 @@ if [ ! -s "$secrets" ]; then
     out="$(make_secrets)"
     printf '%s\n' "$out" | grep -E '^HIKARI_[A-Z_]+=' > "$secrets.new"
     for key in HIKARI_DB_PASSWORD HIKARI_ADMIN_USER HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
-        grep -q "^$key=." "$secrets.new" || fail "the first-run script did not make $key"
+        [ "$(grep -c "^$key=." "$secrets.new")" = 1 ] || fail "the first-run script did not make $key"
     done
     mv "$secrets.new" "$secrets"
     show_password "$out"
@@ -85,8 +92,16 @@ chmod 0600 "$secrets"
 
 # The analyze worker's token, where an analyze container on this host can
 # read it (HIKARI_WORKER_TOKEN_FILE) with nothing pasted.
+# Written beside and renamed in, and left alone when already right, so a
+# worker starting at the same moment never reads half a file.
 umask 027
-sed -n 's/^HIKARI_ANALYZE_TOKEN=//p' "$secrets" | tr -d '\n' > /config/worker-tokens/analyze
+token="$(sed -n 's/^HIKARI_ANALYZE_TOKEN=//p' "$secrets")"
+if [ "$(cat /config/worker-tokens/analyze 2>/dev/null || true)" != "$token" ]; then
+    printf '%s' "$token" > /config/worker-tokens/analyze.new
+    chown hikari:hikari /config/worker-tokens/analyze.new
+    chmod 0640 /config/worker-tokens/analyze.new
+    mv /config/worker-tokens/analyze.new /config/worker-tokens/analyze
+fi
 chown hikari:hikari /config/worker-tokens/analyze
 
 # The gallery reads the Shoko key as its own user.

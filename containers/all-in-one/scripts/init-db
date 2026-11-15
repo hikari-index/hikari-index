@@ -16,14 +16,24 @@ if [ "$(s6-setuidgid hikari "$PGBIN/psql" --dbname=postgres -tAc "select 1 from 
     s6-setuidgid hikari "$PGBIN/createdb" hikari
 fi
 
+# A dump that was cut short (a stop, a full disk) is not a dump.
+rm -f /config/backups/*.dump.part
+
+# "Which version last ran here" is a file; when it is missing or empty but
+# the database already holds tables, assume the worst and dump anyway.
 last="$(cat /config/version 2>/dev/null || true)"
-if [ -n "$last" ] && [ "$last" != "$HIKARI_GALLERY_VERSION" ]; then
+tables="$(s6-setuidgid hikari "$PGBIN/psql" -tAc "select count(*) from information_schema.tables where table_schema = 'public'")"
+if [ "$last" != "$HIKARI_GALLERY_VERSION" ] && [ "$tables" -gt 0 ]; then
     dump="/config/backups/before-${HIKARI_GALLERY_VERSION}-$(date +%Y%m%d-%H%M%S).dump"
-    log "this was $last and is now $HIKARI_GALLERY_VERSION: dumping the database to $dump first"
-    s6-setuidgid hikari "$PGBIN/pg_dump" --format=custom --file="$dump.part" \
-        || fail "the dump before the update failed (is the config folder's disk full?); nothing was changed. The previous image still runs on this database"
-    mv "$dump.part" "$dump"
+    log "this was ${last:-an unrecorded version} and is now $HIKARI_GALLERY_VERSION: dumping the database to $dump first"
+    if ! s6-setuidgid hikari "$PGBIN/pg_dump" --format=custom --file="$dump.part" || ! mv "$dump.part" "$dump"; then
+        rm -f "$dump.part"
+        fail "the dump before the update failed (is the config folder's disk full?); nothing was changed. The previous image still runs on this database"
+    fi
     ls -1t /config/backups/before-*.dump | tail -n +6 | xargs -r rm --
 fi
-echo "$HIKARI_GALLERY_VERSION" > /config/version
-chown hikari:hikari /config/version
+if [ "$last" != "$HIKARI_GALLERY_VERSION" ]; then
+    echo "$HIKARI_GALLERY_VERSION" > /config/version.new
+    chown hikari:hikari /config/version.new
+    mv /config/version.new /config/version
+fi

@@ -132,7 +132,17 @@ RUN set -eux; \
     svc worker longrun gallery; \
     svc text-encoder longrun init-hikari; \
     svc backup longrun init-db; \
-    echo SIGINT > "$d/postgres/down-signal"
+    echo SIGINT > "$d/postgres/down-signal"; \
+    echo 60000 > "$d/worker/timeout-kill"; \
+    echo 10000 > "$d/gallery/timeout-kill"; \
+    echo 5000 > "$d/text-encoder/timeout-kill"; \
+    echo 5000 > "$d/backup/timeout-kill"
+
+# Stopping: the worker gets a minute to hand its stage back, the gallery
+# ten seconds, and only then is the database asked to shut down (SIGINT,
+# its "fast" shutdown; it is never killed from in here). Give the
+# container two minutes to stop (`--stop-timeout 120`) so Docker does not
+# cut that short.
 
 # PYTHONPATH is each program's own business here (the worker's and the
 # encoder's differ), so the worker image's value is cleared.
@@ -143,7 +153,6 @@ ENV PYTHONPATH="" \
     PGID=10001 \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
     S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
-    S6_SERVICES_GRACETIME=65000 \
     S6_VERBOSITY=1
 
 # The image's own tag, passed at build; last, so a new version changes no

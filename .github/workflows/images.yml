@@ -123,8 +123,9 @@ jobs:
   # The all-in-one image (containers/all-in-one): the gallery, worker and
   # text encoder built again here from the same commit (from the cache the
   # job above fills), then put together with the database. amd64 only, as
-  # the worker is.
+  # the worker is. After the job above, so its cache is there to use.
   all-in-one:
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Free disk space
