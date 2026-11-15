@@ -49,7 +49,10 @@ export function startGalleryWorker() {
       busy = false;
     }
   };
-  releaseOwn(ID)
+  // After the schema is current: on a new, empty database there is no jobs
+  // table yet, and the attempt left an error in the database's log.
+  ensureMigrated()
+    .then(() => releaseOwn(ID))
     .catch(() => 0)
     .finally(() => {
       run();
