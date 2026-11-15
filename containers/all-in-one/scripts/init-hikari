@@ -1,7 +1,10 @@
 #!/command/with-contenv bash
-# First thing on every start: take the user id asked for, make the
-# folders, and on the first start make the secrets. A problem here stops
-# the container with a line that says what to change.
+# First thing on every start: take the user id asked for and make the
+# folders that user's. Everything written inside them after that is
+# written as that user (init-config), never as root: root following a
+# link planted in a folder someone else owns is how a small break-in
+# becomes a large one. A problem here stops the container with a line
+# that says what to change.
 set -euo pipefail
 
 log() { echo "[hikari] $*"; }
@@ -25,89 +28,25 @@ mountpoint -q /source || fail "nothing is mounted at /source (your video, read-o
 
 groupmod --non-unique --gid "$PGID" hikari
 usermod --non-unique --uid "$PUID" hikari
+install --directory --owner hikari --group hikari /run/postgresql
 
-install --directory --owner hikari --group hikari /run/postgresql /data/runs
-install --directory --owner hikari --group hikari --mode 0700 /config/db
-install --directory --owner hikari --group hikari --mode 0750 /config/backups /config/worker-tokens
-# Everything in the three folders is handed to that user once, and again
+# The three folders themselves, then everything in them once, and again
 # only when PUID or PGID changes: walking a large library on every start
-# would wake the disks and hold the start up for nothing.
+# would wake the disks and hold the start up for nothing. Links are
+# handed over as links, never followed.
 chown hikari:hikari /config /data /images
 if [ "$(cat /config/.owner 2>/dev/null || true)" != "$PUID:$PGID" ]; then
     log "handing the config, data and images folders to user $PUID:$PGID (once; a large library takes a while)"
     for dir in /config /data /images; do
         find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown --no-dereference hikari:hikari {} +
     done
-    echo "$PUID:$PGID" > /config/.owner.new
-    mv /config/.owner.new /config/.owner
 fi
-for dir in /config /data /data/runs /images; do
-    s6-setuidgid hikari test -w "$dir" || fail "user $PUID cannot write to $dir"
-done
-
-if [ -s /config/db/PG_VERSION ] && [ "$(cat /config/db/PG_VERSION)" != 18 ]; then
-    fail "the database in /config/db was made by PostgreSQL $(cat /config/db/PG_VERSION) and this image runs 18; go back to the image that made it"
+# A Shoko key put in the folder later arrives owned by whoever copied it;
+# the gallery reads it as its own user.
+if [ -f /config/shoko-api-key ] && [ ! -L /config/shoko-api-key ]; then
+    chown --no-dereference hikari:hikari /config/shoko-api-key
 fi
 
-# The secrets: the same ones, made the same way, as the compose install's
-# first-run step (the gallery's own script), kept in /config/hikari.env.
-# An empty file /config/reset-admin-password makes a new admin sign-in.
-secrets=/config/hikari.env
-make_secrets() {
-    s6-setuidgid hikari node /opt/hikari/gallery/scripts/first-run.js "${HIKARI_ADMIN_USER:-admin}"
-}
-show_password() {
-    password="$(printf '%s\n' "$1" | sed -n 's/^ *password: *//p')"
-    [ -n "$password" ] || fail "the first-run script printed no password"
-    log "================================================================"
-    log "Your admin sign-in (shown once; it is not stored anywhere):"
-    log "  user:     ${HIKARI_ADMIN_USER:-admin}"
-    log "  password: $password"
-    log "To make a new one later, put an empty file named"
-    log "reset-admin-password in the config folder and restart."
-    log "================================================================"
-}
-umask 077
-if [ ! -s "$secrets" ]; then
-    [ ! -e /config/db/PG_VERSION ] || fail "/config/hikari.env is missing but /config/db holds a database made with its password; put the file back"
-    out="$(make_secrets)"
-    printf '%s\n' "$out" | grep -E '^HIKARI_[A-Z_]+=' > "$secrets.new"
-    for key in HIKARI_DB_PASSWORD HIKARI_ADMIN_USER HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
-        [ "$(grep -c "^$key=." "$secrets.new")" = 1 ] || fail "the first-run script did not make $key"
-    done
-    mv "$secrets.new" "$secrets"
-    show_password "$out"
-elif [ -e /config/reset-admin-password ]; then
-    out="$(make_secrets)"
-    { grep -Ev '^HIKARI_(ADMIN_USER|ADMIN_PASSWORD_HASH|SESSION_SECRET)=' "$secrets"
-      printf '%s\n' "$out" | grep -E '^HIKARI_(ADMIN_USER|ADMIN_PASSWORD_HASH|SESSION_SECRET)='
-    } > "$secrets.new"
-    [ "$(grep -c '^HIKARI_ADMIN_PASSWORD_HASH=.' "$secrets.new")" = 1 ] || fail "could not make a new admin sign-in"
-    mv "$secrets.new" "$secrets"
-    rm /config/reset-admin-password
-    show_password "$out"
-fi
-chown hikari:hikari "$secrets"
-chmod 0600 "$secrets"
-
-# The analyze worker's token, where an analyze container on this host can
-# read it (HIKARI_WORKER_TOKEN_FILE) with nothing pasted.
-# Written beside and renamed in, and left alone when already right, so a
-# worker starting at the same moment never reads half a file.
-umask 027
-token="$(sed -n 's/^HIKARI_ANALYZE_TOKEN=//p' "$secrets")"
-if [ "$(cat /config/worker-tokens/analyze 2>/dev/null || true)" != "$token" ]; then
-    printf '%s' "$token" > /config/worker-tokens/analyze.new
-    chown hikari:hikari /config/worker-tokens/analyze.new
-    chmod 0640 /config/worker-tokens/analyze.new
-    mv /config/worker-tokens/analyze.new /config/worker-tokens/analyze
-fi
-chown hikari:hikari /config/worker-tokens/analyze
-
-# The gallery reads the Shoko key as its own user.
-if [ -e /config/shoko-api-key ]; then
-    chown hikari:hikari /config/shoko-api-key
-    chmod 0400 /config/shoko-api-key
-fi
+s6-setuidgid hikari /opt/hikari/aio/init-config
 
 log "$HIKARI_GALLERY_VERSION and $HIKARI_WORKER_VERSION starting as user $PUID:$PGID; gallery at $origin"

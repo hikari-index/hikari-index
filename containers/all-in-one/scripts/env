@@ -16,3 +16,6 @@ export PGHOST=/run/postgresql PGUSER=hikari PGDATABASE=hikari
 PGBIN=/usr/lib/postgresql/18/bin
 
 log() { echo "[hikari] $*"; }
+# Anything that writes under /config, /data or /images does it as the
+# programs' user, never as root.
+as_user() { s6-setuidgid hikari "$@"; }

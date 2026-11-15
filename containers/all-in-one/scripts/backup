@@ -8,15 +8,15 @@ set -uo pipefail
 
 while true; do
     dump="/config/backups/hikari-$(date +%F).dump"
-    if [ ! -s "$dump" ]; then
-        if ! tables="$(s6-setuidgid hikari "$PGBIN/psql" -tAc "select count(*) from information_schema.tables where table_schema = 'public'")"; then
+    if ! as_user test -s "$dump"; then
+        if ! tables="$(as_user "$PGBIN/psql" -tAc "select count(*) from information_schema.tables where table_schema = 'public'")"; then
             log "today's database dump: the database did not answer; trying again in an hour"
         elif [ "$tables" -gt 0 ]; then
-            if s6-setuidgid hikari "$PGBIN/pg_dump" --format=custom --file="$dump.part" && mv "$dump.part" "$dump"; then
-                ls -1t /config/backups/hikari-*.dump | tail -n +15 | xargs -r rm --
+            if as_user "$PGBIN/pg_dump" --format=custom --file="$dump.part" && as_user mv "$dump.part" "$dump"; then
+                as_user sh -c 'ls -1t /config/backups/hikari-*.dump | tail -n +15 | xargs -r rm --'
                 log "database dumped to $dump"
             else
-                rm -f "$dump.part"
+                as_user rm -f "$dump.part"
                 log "today's database dump failed (is the config folder's disk full?); trying again in an hour"
             fi
         fi
