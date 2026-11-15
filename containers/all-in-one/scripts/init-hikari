@@ -21,6 +21,13 @@ case "$origin" in
     *) fail "set HIKARI_ORIGIN to the address you open the gallery at, for example http://192.0.2.10:5183 (the sign-in form refuses any other)" ;;
 esac
 
+# This container makes the token of the analyze worker named "analyze" and
+# gives the gallery that pair itself; HIKARI_WORKER_TOKENS, the same
+# setting as on every install, lists the others.
+case ",$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr -d '[:space:]')" in
+    *,analyze:*) fail "HIKARI_WORKER_TOKENS names analyze, the worker whose token this container makes itself; list only your other workers there, as name:token,name:token" ;;
+esac
+
 for mount in /config /data /images; do
     mountpoint -q "$mount" || fail "nothing is mounted at $mount; without it everything there is lost when the container is updated"
 done

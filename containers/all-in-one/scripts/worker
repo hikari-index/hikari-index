@@ -1,5 +1,7 @@
 #!/command/with-contenv bash
-# The worker that reads your video, as the worker image runs it. It waits
+# The worker that reads your video, as the worker image runs it: the
+# environment below is that image's own (first three lines) and
+# compose.yaml's worker service, with this container's folders. It waits
 # for the gallery to answer first: by then the tables are up to date.
 set -euo pipefail
 . /opt/hikari/aio/env
@@ -8,9 +10,16 @@ until node -e "fetch('http://127.0.0.1:3000/series').then(r=>process.exit(r.ok?0
     sleep 2
 done
 
-export PYTHONPATH=/app HOME=/home/hikari
-export HIKARI_OUTPUT=/data
-export HIKARI_SOURCE_ROOTS="${HIKARI_SOURCE_ROOTS:-library=/source}"
-
 cd /app
-exec s6-setuidgid hikari python -m hikari_worker
+program \
+    PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=/app PYTHONDONTWRITEBYTECODE=1 \
+    HIKARI_WORKER_VERSION="$HIKARI_WORKER_VERSION" \
+    DATABASE_URL="$DATABASE_URL" \
+    HIKARI_SOURCE_ROOTS="${HIKARI_SOURCE_ROOTS:-library=/source}" \
+    HIKARI_POLL_SECONDS="${HIKARI_POLL_SECONDS:-30}" \
+    HIKARI_WORKER_HOURS="${HIKARI_WORKER_HOURS:-}" \
+    TZ="$clock" \
+    HIKARI_OUTPUT=/data \
+    HIKARI_IMAGES=/images \
+    python -m hikari_worker

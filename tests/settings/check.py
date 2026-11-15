@@ -25,6 +25,9 @@ parser) and checks:
   gallery/scripts/first-run.js
     - the names in them are that route's settings and no others (the
       values in an example are examples, and are not compared).
+  containers/all-in-one/scripts
+    - the settings its start scripts take from the container are that
+      route's and no others, all of them, with the list's defaults.
   worker/, providers/, gallery/src, gallery/scripts
     - every environment name read is in the list, as that program's
       setting or as wiring; every setting is read by the program the
@@ -151,6 +154,31 @@ for kind in ("cpu", "rtx"):
 for name in sorted(set(second) - mentioned):
     problems.append(f"settings.json lists {name} for a second machine, and neither worker's files mention it")
 
+# --- the all-in-one image ---------------------------------------------------
+# Its start scripts take the settings from the one container's variables
+# and hand each program its own. Checked here: the names the scripts take
+# are this route's and no others, every one of the route's is taken, and
+# a default written in a script is the list's. That each program then
+# gets the right ones under the right names is shown by running it.
+aio = on_route("all-in-one")
+SHELL = re.compile(r"\$\{?(HIKARI_[A-Z0-9_]+|PUID|PGID|TZ|ORIGIN)\b(?:(:?[-+?])([^}$]*)\})?")
+taken: set[str] = set()
+for path in sorted((ROOT / "containers/all-in-one/scripts").iterdir()):
+    where = path.relative_to(ROOT).as_posix()
+    for number, raw in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        if raw.lstrip().startswith("#"):
+            continue
+        for name, operator, default in SHELL.findall(raw):
+            taken.add(name)
+            if name in aio:
+                wanted = aio[name].get("default_on", {}).get("all-in-one", aio[name]["default"])
+                if operator == ":-" and default != wanted:
+                    problems.append(f"{where}:{number} gives {name} the default {default!r}; settings.json says {wanted!r}")
+            elif name not in WIRING and name not in RUNTIME:
+                problems.append(f"{where}:{number} takes {name}, which settings.json does not list for the all-in-one")
+for name in sorted(set(aio) - taken):
+    problems.append(f"settings.json lists {name} for the all-in-one, and none of its start scripts takes it")
+
 # --- the programs -----------------------------------------------------------
 # (program, the name it reads) -> the setting
 expected: dict[tuple[str, str], dict] = {}
@@ -213,4 +241,4 @@ if problems:
     for line in problems:
         print(f"  - {line}")
     sys.exit(1)
-print(f"settings.json: {len(SETTINGS)} settings; no difference found in the compose files, the .env examples or the programs' reads")
+print(f"settings.json: {len(SETTINGS)} settings; no difference found in the compose files, the .env examples, the all-in-one's start scripts or the programs' reads")

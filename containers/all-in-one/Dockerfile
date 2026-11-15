@@ -8,10 +8,13 @@
 # here: it is the heavy part, and runs as its own container (the cpu-worker
 # image, or a GPU worker on another machine).
 #
-# Nothing is rebuilt here. The gallery, the worker and the text encoder are
-# the files of their own images, copied whole, so frames, web images and
-# phrase vectors are theirs byte for byte. The three images come in as
-# named build contexts:
+# Nothing is rebuilt here. This image starts from the worker image and
+# copies in the gallery's built app and Node, and the text encoder's
+# Python, packages, model and code, from their own images. The files are
+# theirs; the operating system under the gallery and the text encoder is
+# the worker image's, so equal output is something a run shows, not
+# something the copy guarantees (docs/BUILDING.md). The three images come
+# in as named build contexts:
 #
 #   docker buildx bake -f docker-bake.hcl all-in-one    # all four, from this checkout
 #
@@ -28,9 +31,11 @@
 #
 # Mounts: /config (settings it makes, the database, database dumps),
 # /data (run records and original frames), /images (web images),
-# /source read-only (your video). Settings: HIKARI_ORIGIN (required),
-# PUID and PGID, and the gallery's and worker's optional ones
-# (https://docs.hikari-index.moe/reference/settings/).
+# /source read-only (your video). Settings: the ones settings.json lists
+# for the all-in-one, under the same names and with the same defaults as
+# every other install (HIKARI_ORIGIN is required here), plus PUID and
+# PGID. Each program is started with its own settings and nothing else
+# (scripts/env, `program`).
 
 ARG S6_OVERLAY_VERSION="3.2.3.2"
 ARG S6_OVERLAY_NOARCH_SHA256="5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec58049b57eb2eda12"
@@ -172,18 +177,16 @@ RUN set -eux; \
     echo 5000 > "$d/text-encoder/timeout-kill"; \
     echo 5000 > "$d/backup/timeout-kill"
 
-# Stopping: the worker gets a minute to hand its stage back, the gallery
-# ten seconds, and only then is the database asked to shut down (SIGINT,
-# its "fast" shutdown; it is never killed from in here). Give the
-# container two minutes to stop (`--stop-timeout 120`) so Docker does not
-# cut that short.
+# Stopping, in order: the worker gets up to a minute to hand its stage
+# back, the gallery ten seconds, and then the database is asked to shut
+# down (SIGINT, its "fast" shutdown). That needs the container to be
+# given the time: start it with `--stop-timeout 120`, or Docker's own
+# ten seconds cuts it short and kills what is still running.
 
-# PYTHONPATH is each program's own business here (the worker's and the
-# encoder's differ), so the worker image's value is cleared.
-ENV PYTHONPATH="" \
-    LANG=en_US.UTF-8 \
-    LC_ALL=en_US.UTF-8 \
-    PUID=10001 \
+# The locale and PYTHONPATH here stay the worker image's, and only the
+# start scripts see them: each program gets its own environment from its
+# start script, and the database the locale the postgres image uses.
+ENV PUID=10001 \
     PGID=10001 \
     S6_BEHAVIOUR_IF_STAGE2_FAILS=2 \
     S6_CMD_WAIT_FOR_SERVICES_MAXTIME=0 \
@@ -196,8 +199,11 @@ RUN test -n "$HIKARI_GALLERY_VERSION" || { echo 'pass --build-arg HIKARI_GALLERY
 ENV HIKARI_GALLERY_VERSION=${HIKARI_GALLERY_VERSION}
 
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=5s --start-period=120s --retries=3 \
-    CMD ["node", "-e", "fetch('http://127.0.0.1:3000/series').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+# One container, one health: the gallery's check (its image's) and the
+# text encoder's (its image's), so mood search being down shows here as
+# it does on the text encoder's own container elsewhere.
+HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
+    CMD ["node", "-e", "Promise.all(['http://127.0.0.1:3000/series','http://127.0.0.1:5187/health'].map(u=>fetch(u))).then(rs=>process.exit(rs.every(r=>r.ok)?0:1)).catch(()=>process.exit(1))"]
 WORKDIR /
 ENTRYPOINT ["/init"]
 CMD []

@@ -25,14 +25,19 @@ fi
 # An empty file /config/reset-admin-password makes a new admin sign-in.
 secrets=/config/hikari.env
 make_secrets() {
-    node /opt/hikari/gallery/scripts/first-run.js "${HIKARI_ADMIN_USER:-admin}"
+    # The name is yours if you set one; left empty, the script's own
+    # default stands, as on a compose install.
+    node /opt/hikari/gallery/scripts/first-run.js "${HIKARI_ADMIN_USER:-}"
 }
 show_password() {
+    user="$(printf '%s\n' "$1" | sed -n 's/^ *user: *//p')"
     password="$(printf '%s\n' "$1" | sed -n 's/^ *password: *//p')"
-    [ -n "$password" ] || fail "the first-run script printed no password"
+    [ -n "$user" ] && [ -n "$password" ] || fail "the first-run script printed no sign-in"
     log "================================================================"
-    log "Your admin sign-in (shown once; it is not stored anywhere):"
-    log "  user:     ${HIKARI_ADMIN_USER:-admin}"
+    log "Your admin sign-in. Only a hash of the password is kept: the"
+    log "password itself is in this log and nowhere else, and the log goes"
+    log "when the container is removed or updated. Write it down now."
+    log "  user:     $user"
     log "  password: $password"
     log "To make a new one later, put an empty file named"
     log "reset-admin-password in the config folder and restart."
