@@ -1,6 +1,9 @@
 # Hikari Index on one machine: the gallery, its database, the worker that
 # reads your video, an analyze worker and the text encoder for mood search.
 # Settings come from `.env` beside this file (copy `.env.example`).
+# settings.json is the list of them, with the one default each has
+# however the tool is installed; tests/settings/check.py holds this file
+# to it.
 #
 # The images are published on ghcr.io (docs/RELEASING.md); HIKARI_VERSION
 # picks which: `latest` (the default), a release such as `1.0.0`, or `dev`.
@@ -52,6 +55,7 @@ x-analyze-environment: &analyze-environment
   HIKARI_WORKER_TOKEN: ${HIKARI_ANALYZE_TOKEN:-}
   HIKARI_SHARE: /share
   HIKARI_POLL_SECONDS: ${HIKARI_POLL_SECONDS:-30}
+  TZ: ${HIKARI_TZ:-}
   # "1" makes this worker a fallback for one on another machine
   # (https://docs.hikari-index.moe/install/second-machine/).
   HIKARI_WORKER_STANDBY: ${HIKARI_ANALYZE_STANDBY:-}
@@ -101,6 +105,7 @@ services:
       HIKARI_WORKER_TOKENS: ${HIKARI_WORKER_TOKENS:-}
       HIKARI_ADMIN_LINK: ${HIKARI_ADMIN_LINK:-1}
       HIKARI_NOTICE: ${HIKARI_NOTICE:-}
+      TZ: ${HIKARI_TZ:-}
       HIKARI_IMAGES: /images
       HIKARI_RUNS: /share/runs
       ENCODER_URL: http://text-encoder:5187
@@ -141,6 +146,8 @@ services:
       HIKARI_SOURCE_ROOTS: ${HIKARI_SOURCE_ROOTS:-library=/source}
       HIKARI_POLL_SECONDS: ${HIKARI_POLL_SECONDS:-30}
       HIKARI_WORKER_HOURS: ${HIKARI_WORKER_HOURS:-}
+      # The clock HIKARI_WORKER_HOURS and the log times are on; empty is UTC.
+      TZ: ${HIKARI_TZ:-}
     volumes:
       # Your video, read-only. The only service that sees it.
       - ${HIKARI_VIDEO:?set HIKARI_VIDEO in .env to the folder your video is in}:/source:ro

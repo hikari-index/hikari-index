@@ -31,6 +31,7 @@ fix, a rule change or a migration the gallery applies itself does not).
 | `containers/` | One Dockerfile per image: `worker`, `inference` (the analyze base), `rtx-worker`, `cpu-worker`, `text-encoder`, and `all-in-one` (the gallery, worker and text encoder images' files plus the database in one container; `docker-bake.hcl` builds it). The gallery's is `gallery/Dockerfile`. |
 | `tests/` | Synthetic-fixture tests for the providers. |
 | `compose.yaml`, `.env.example` | The single-machine install: every service, built from source, one settings file. |
+| `settings.json` | The one list of settings a person can set, with the one default each has however the tool is installed. A setting is added, renamed or given a new default here, in every wrapper and on the docs' settings page in the same change. |
 | `compose.rtx-worker.yaml`, `compose.cpu-worker.yaml`, `compose.db.yaml` | An analyze worker on a second machine (GPU or CPU), and a database for gallery development. Each has its `.env.*.example`. |
 
 ## Build, run, test
@@ -46,6 +47,11 @@ fix, a rule change or a migration the gallery applies itself does not).
   use synthetic fixtures only; a test that needs a real file takes a path
   from the environment and skips without one. The gallery has no test
   suite yet; `npm run build` is its check.
+- Settings: `python tests/settings/check.py` compares the compose files,
+  their `.env` examples and the programs' own reads with `settings.json`
+  (its first lines say what it does not check). CI runs it before any
+  image is built. A default lives in the program; a wrapper that also
+  states it must state the same one.
 - Verify a built image on a real input before you call it delivered.
   Tests and code review have both missed what the first real run caught.
 

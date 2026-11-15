@@ -23,6 +23,9 @@ services:
     environment:
       HIKARI_SHARE: /share
       HIKARI_DEVICE: cuda
+      # The time zone the times in its log are in; empty is UTC. The same
+      # name as on the main machine.
+      TZ: ${HIKARI_TZ:-}
     volumes:
       # A Docker-managed CIFS volume onto the shared data folder (it holds
       # its own credential). Read-only: the worker never writes the share.

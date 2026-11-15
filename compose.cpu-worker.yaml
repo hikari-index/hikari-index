@@ -28,6 +28,9 @@ services:
     environment:
       HIKARI_SHARE: /share
       HIKARI_DEVICE: cpu
+      # The time zone the times in its log are in; empty is UTC. The same
+      # name as on the main machine.
+      TZ: ${HIKARI_TZ:-}
     volumes:
       - type: volume
         source: share

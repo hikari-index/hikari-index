@@ -62,10 +62,11 @@ def source_roots() -> dict[str, Path]:
     at here, e.g. "4=/source,films=/source/films". For a file onboarded
     from Shoko the name is Shoko's managed folder id; for a file added
     without Shoko (ADR-0014) it is whatever the operator named the folder.
-    Path mapping is worker configuration, never part of a job (research/01
-    "Path translation")."""
+    Unset or empty, the video mount under the name "library", as
+    settings.json has it. Path mapping is worker configuration, never part
+    of a job (research/01 "Path translation")."""
     out = {}
-    for part in os.environ.get("HIKARI_SOURCE_ROOTS", "").split(","):
+    for part in (os.environ.get("HIKARI_SOURCE_ROOTS") or "library=/source").split(","):
         if "=" in part:
             k, v = part.split("=", 1)
             out[k.strip()] = Path(v.strip())
