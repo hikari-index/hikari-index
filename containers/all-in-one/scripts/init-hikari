@@ -15,10 +15,20 @@ PGID="${PGID:-10001}"
 case "$PUID$PGID" in *[!0-9]*) fail "PUID and PGID must be numbers (got '$PUID' and '$PGID')" ;; esac
 [ "$PUID" -ne 0 ] || fail "PUID is 0; the database does not run as root. Use an ordinary user id (unRAID's is 99)"
 
-origin="${HIKARI_ORIGIN:-${ORIGIN:-}}"
+origin="${HIKARI_ORIGIN:-}"
 case "$origin" in
     http://?*|https://?*) ;;
     *) fail "set HIKARI_ORIGIN to the address you open the gallery at, for example http://192.0.2.10:5183 (the sign-in form refuses any other)" ;;
+esac
+
+# What the compose install's first-run step makes, this container makes
+# itself and keeps in the config folder. A value given on the container
+# would be ignored without a word, so it is refused with one.
+for made in HIKARI_DB_PASSWORD HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
+    [ -z "${!made:-}" ] || fail "$made is set on the container; this container makes it on first start and keeps it in hikari.env in the config folder. Remove the variable (to change the value, edit that file)"
+done
+case "${HIKARI_ADMIN_USER:-}" in
+    [[:space:]]*|*[[:space:]]) fail "HIKARI_ADMIN_USER starts or ends with a space; the sign-in would need it typed" ;;
 esac
 
 # This container makes the token of the analyze worker named "analyze" and

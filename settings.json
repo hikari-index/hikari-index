@@ -5,7 +5,7 @@
     "The user docs' settings page (hikari-index-docs, content/reference/settings.md) is held to a copy of this file. Change a setting here, in the wrappers and there, in one sitting.",
     "name: what the person types (a line in .env). compose_own: Compose reads it itself, so compose.yaml never names it. reads: which program gets it, under which name. routes: the ways of installing that offer it. names: where a route has released the same setting under another name, that name. only: the setting exists because of how that one route is packaged, and why.",
     "The all-in-one image (containers/all-in-one) takes the settings whose routes include all-in-one, as variables on its one container; its start scripts hand each program its own and nothing else. What the compose install's first-run step makes, it makes itself on first start and keeps in its config folder. The analyze worker beside it is its own container and takes an analyze worker's settings, as on a second machine.",
-    "default_on: where a route cannot have the usual default, what it has instead; why_default says why.",
+    "default_on: where a route cannot have the usual default, what it has instead; why_default says why. also_on: where a route takes the setting from one more place when its own name is unset, that place, and why. note_on: what else is true of the setting on that route.",
     "Not in this list: compose.db.yaml (a developer's database) and what is fixed when an image is built (build arguments, a Dockerfile's ENV)."
   ],
   "settings": [
@@ -49,6 +49,7 @@
     { "name": "HIKARI_WORKER_HOURS", "group": "optional", "default": "", "routes": ["compose", "all-in-one"], "reads": { "worker": "HIKARI_WORKER_HOURS" },
       "what": "Start the worker's stages only between these hours, for example 01-07, on the clock HIKARI_TZ names. Empty means any time." },
     { "name": "HIKARI_TZ", "group": "optional", "default": "", "routes": ["compose", "second-machine", "all-in-one"], "reads": { "worker": "TZ", "analyze": "TZ", "gallery": "TZ" },
+      "also_on": { "all-in-one": "TZ" }, "why_also": "A host such as unRAID sets TZ on every container to its own time zone; the all-in-one uses that when HIKARI_TZ is not set, so its hours are the server's without anything typed.",
       "what": "The time zone HIKARI_WORKER_HOURS and the times in the logs are in, for example America/New_York. Empty means UTC." },
     { "name": "HIKARI_POLL_SECONDS", "group": "optional", "default": "30", "routes": ["compose", "second-machine", "all-in-one"], "reads": { "worker": "HIKARI_POLL_SECONDS", "analyze": "HIKARI_POLL_SECONDS" },
       "what": "How often an idle worker asks for work, in seconds." },
@@ -71,6 +72,7 @@
     { "name": "HIKARI_ANALYZE_TOKEN", "group": "made", "default": "", "routes": ["compose", "second-machine", "all-in-one"], "reads": { "analyze": "HIKARI_WORKER_TOKEN" }, "names": { "second-machine": "HIKARI_WORKER_TOKEN" },
       "what": "The analyze worker's token, the other half of its pair in HIKARI_WORKER_TOKENS." },
     { "name": "HIKARI_WORKER_TOKENS", "group": "made", "default": "", "routes": ["compose", "all-in-one"], "reads": { "gallery": "HIKARI_WORKER_TOKENS" },
+      "note_on": { "all-in-one": "The container makes the pair of the analyze worker named analyze and adds it itself; the setting lists only other workers, and the container refuses to start if it names analyze." },
       "what": "Every analyze worker's name:token pair, separated by commas." },
 
     { "name": "PUID", "group": "optional", "default": "10001", "routes": ["all-in-one"], "reads": {},

@@ -1,8 +1,9 @@
 #!/command/with-contenv bash
 # The database. Made on the first start in /config/db; reachable only from
 # inside this container (the local socket, and 127.0.0.1 with the password).
-# It runs with the locale the postgres image has and no time zone of
-# yours, so it keeps UTC as the compose install's database does.
+# It is made and run with the locale the postgres image has and with no
+# time zone of yours, so a database made here is on UTC, as the compose
+# install's is. (The zone is fixed when the database is made.)
 set -euo pipefail
 . /opt/hikari/aio/env
 

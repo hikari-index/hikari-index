@@ -1,7 +1,9 @@
 #!/command/with-contenv bash
-# The gallery, as the gallery image runs it: the environment below is
-# that image's own (first two lines) and compose.yaml's gallery service
-# (the rest), with this container's addresses and folders.
+# The gallery, as the gallery image runs it. The environment below is
+# what compose.yaml's gallery service gives it (the settings, one per
+# line, in the form tests/settings/check.py reads) and what the gallery
+# image itself sets (gallery/Dockerfile's ENV, copied here by hand), with
+# this container's addresses and folders.
 set -euo pipefail
 . /opt/hikari/aio/env
 
@@ -11,17 +13,17 @@ program \
     NODE_ENV=production PORT=3000 HOST=0.0.0.0 BODY_SIZE_LIMIT=64M HIKARI_READ_ONLY= \
     HIKARI_GALLERY_VERSION="$HIKARI_GALLERY_VERSION" \
     DATABASE_URL="$DATABASE_URL" \
-    ORIGIN="${HIKARI_ORIGIN:-${ORIGIN:-}}" \
+    ORIGIN="${HIKARI_ORIGIN:-}" \
     HIKARI_ADMIN_USER="$HIKARI_ADMIN_USER" \
     HIKARI_ADMIN_PASSWORD_HASH="$HIKARI_ADMIN_PASSWORD_HASH" \
     HIKARI_SESSION_SECRET="$HIKARI_SESSION_SECRET" \
     HIKARI_WORKER_TOKENS="analyze:${HIKARI_ANALYZE_TOKEN}${HIKARI_WORKER_TOKENS:+,${HIKARI_WORKER_TOKENS}}" \
     HIKARI_ADMIN_LINK="${HIKARI_ADMIN_LINK:-1}" \
     HIKARI_NOTICE="${HIKARI_NOTICE:-}" \
-    TZ="$clock" \
+    TZ="${HIKARI_TZ:-${TZ:-}}" \
+    HIKARI_SHOKO_BASE_URL="${HIKARI_SHOKO_BASE_URL:-}" \
     HIKARI_IMAGES=/images \
     HIKARI_RUNS=/data/runs \
     ENCODER_URL=http://127.0.0.1:5187 \
-    HIKARI_SHOKO_BASE_URL="${HIKARI_SHOKO_BASE_URL:-}" \
     HIKARI_SHOKO_API_KEY_FILE=/config/shoko-api-key \
     node build

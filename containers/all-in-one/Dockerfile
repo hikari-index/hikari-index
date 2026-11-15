@@ -153,7 +153,7 @@ COPY --chmod=0755 containers/all-in-one/scripts/ /opt/hikari/aio/
 # runs.
 COPY --chmod=0755 containers/dump/dump-daily /opt/hikari/dump-daily
 RUN set -eux; \
-    ! grep -rlq "$(printf '\r')" /opt/hikari/aio \
+    ! grep -rlq "$(printf '\r')" /opt/hikari/aio /opt/hikari/dump-daily \
         || { echo 'the all-in-one scripts have CRLF line endings; check the files out with LF' >&2; exit 1; }; \
     d=/etc/s6-overlay/s6-rc.d; \
     mkdir -p /etc/s6-overlay/user-bundles.d/user/contents.d; \

@@ -1,8 +1,10 @@
 #!/command/with-contenv bash
-# The worker that reads your video, as the worker image runs it: the
-# environment below is that image's own (first three lines) and
-# compose.yaml's worker service, with this container's folders. It waits
-# for the gallery to answer first: by then the tables are up to date.
+# The worker that reads your video, as the worker image runs it. The
+# environment below is what compose.yaml's worker service gives it (the
+# settings, one per line, in the form tests/settings/check.py reads) and
+# what the worker image itself sets (containers/worker/Dockerfile's ENV,
+# copied here by hand), with this container's folders. It waits for the
+# gallery to answer first: by then the tables are up to date.
 set -euo pipefail
 . /opt/hikari/aio/env
 
@@ -19,7 +21,7 @@ program \
     HIKARI_SOURCE_ROOTS="${HIKARI_SOURCE_ROOTS:-library=/source}" \
     HIKARI_POLL_SECONDS="${HIKARI_POLL_SECONDS:-30}" \
     HIKARI_WORKER_HOURS="${HIKARI_WORKER_HOURS:-}" \
-    TZ="$clock" \
+    TZ="${HIKARI_TZ:-${TZ:-}}" \
     HIKARI_OUTPUT=/data \
     HIKARI_IMAGES=/images \
     python -m hikari_worker

@@ -30,8 +30,8 @@ make_secrets() {
     node /opt/hikari/gallery/scripts/first-run.js "${HIKARI_ADMIN_USER:-}"
 }
 show_password() {
-    user="$(printf '%s\n' "$1" | sed -n 's/^ *user: *//p')"
-    password="$(printf '%s\n' "$1" | sed -n 's/^ *password: *//p')"
+    user="$(printf '%s\n' "$1" | sed -n 's/^  user:     //p')"
+    password="$(printf '%s\n' "$1" | sed -n 's/^  password: //p')"
     [ -n "$user" ] && [ -n "$password" ] || fail "the first-run script printed no sign-in"
     log "================================================================"
     log "Your admin sign-in. Only a hash of the password is kept: the"
@@ -48,9 +48,6 @@ if [ ! -s "$secrets" ]; then
     [ ! -e /config/db/PG_VERSION ] || fail "/config/hikari.env is missing but /config/db holds a database made with its password; put the file back"
     out="$(make_secrets)"
     printf '%s\n' "$out" | grep -E '^HIKARI_[A-Z_]+=' > "$secrets.new"
-    for key in HIKARI_DB_PASSWORD HIKARI_ADMIN_USER HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
-        [ "$(grep -c "^$key=." "$secrets.new")" = 1 ] || fail "the first-run script did not make $key"
-    done
     mv "$secrets.new" "$secrets"
     show_password "$out"
 elif [ -e /config/reset-admin-password ]; then
@@ -58,12 +55,17 @@ elif [ -e /config/reset-admin-password ]; then
     { grep -Ev '^HIKARI_(ADMIN_USER|ADMIN_PASSWORD_HASH|SESSION_SECRET)=' "$secrets"
       printf '%s\n' "$out" | grep -E '^HIKARI_(ADMIN_USER|ADMIN_PASSWORD_HASH|SESSION_SECRET)='
     } > "$secrets.new"
-    [ "$(grep -c '^HIKARI_ADMIN_PASSWORD_HASH=.' "$secrets.new")" = 1 ] || fail "could not make a new admin sign-in"
     mv "$secrets.new" "$secrets"
     rm /config/reset-admin-password
     show_password "$out"
 fi
 chmod 0600 "$secrets"
+# Every start, not only the first: a file restored from an old copy or
+# edited by hand with a line lost would otherwise stop the programs one
+# by one with nothing said.
+for key in HIKARI_DB_PASSWORD HIKARI_ADMIN_USER HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
+    [ "$(grep -c "^$key=." "$secrets")" = 1 ] || fail "hikari.env in the config folder has no $key line (or more than one); put back the file this install was made with"
+done
 
 # The analyze worker's token, where an analyze container on this host can
 # read it (HIKARI_WORKER_TOKEN_FILE) with nothing pasted. Written beside

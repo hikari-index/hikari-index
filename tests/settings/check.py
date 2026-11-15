@@ -27,7 +27,9 @@ parser) and checks:
       values in an example are examples, and are not compared).
   containers/all-in-one/scripts
     - the settings its start scripts take from the container are that
-      route's and no others, all of them, with the list's defaults.
+      route's and no others, and all of them; the gallery's and the
+      worker's scripts hand each setting on under the name the program
+      reads, with the list's default.
   worker/, providers/, gallery/src, gallery/scripts
     - every environment name read is in the list, as that program's
       setting or as wiring; every setting is read by the program the
@@ -156,12 +158,26 @@ for name in sorted(set(second) - mentioned):
 
 # --- the all-in-one image ---------------------------------------------------
 # Its start scripts take the settings from the one container's variables
-# and hand each program its own. Checked here: the names the scripts take
-# are this route's and no others, every one of the route's is taken, and
-# a default written in a script is the list's. That each program then
-# gets the right ones under the right names is shown by running it.
+# and hand each program its own, one NAME="..." word per line of a
+# `program` call. Checked here:
+#   - the names any script takes from the container are this route's (or
+#     wiring), every one of the route's is taken somewhere, and a default
+#     written beside one is the list's for this route;
+#   - the gallery's and the worker's start scripts hand that program each
+#     setting the list says it reads, under the name it reads, written as
+#     "${SETTING:-default}" with this route's default, or as
+#     "${SETTING:-${OTHER:-}}" where the list declares that second place
+#     (also_on); what the container makes itself is handed on from its
+#     own variable.
+# The fixed words of each call (paths, the image's own environment) are
+# copied from the Dockerfiles by hand and are not checked here.
 aio = on_route("all-in-one")
+also = {s.get("also_on", {}).get("all-in-one") for s in aio.values()} - {None}
+# The only wiring a script may read from the container: what the image's
+# own ENV sets when it is built.
+BUILT_IN = {"HIKARI_GALLERY_VERSION", "HIKARI_WORKER_VERSION"}
 SHELL = re.compile(r"\$\{?(HIKARI_[A-Z0-9_]+|PUID|PGID|TZ|ORIGIN)\b(?:(:?[-+?])([^}$]*)\})?")
+ASSIGN = re.compile(r"^\s+([A-Z][A-Z0-9_]*)=(\S.*?)\s*\\?$")
 taken: set[str] = set()
 for path in sorted((ROOT / "containers/all-in-one/scripts").iterdir()):
     where = path.relative_to(ROOT).as_posix()
@@ -174,10 +190,30 @@ for path in sorted((ROOT / "containers/all-in-one/scripts").iterdir()):
                 wanted = aio[name].get("default_on", {}).get("all-in-one", aio[name]["default"])
                 if operator == ":-" and default != wanted:
                     problems.append(f"{where}:{number} gives {name} the default {default!r}; settings.json says {wanted!r}")
-            elif name not in WIRING and name not in RUNTIME:
+            elif name not in BUILT_IN and name not in also:
                 problems.append(f"{where}:{number} takes {name}, which settings.json does not list for the all-in-one")
 for name in sorted(set(aio) - taken):
     problems.append(f"settings.json lists {name} for the all-in-one, and none of its start scripts takes it")
+
+for program in ("gallery", "worker"):
+    where = f"containers/all-in-one/scripts/{program}"
+    given = {m.group(1): m.group(2) for m in map(ASSIGN.match, text(where).splitlines()) if m}
+    for name, s in sorted(aio.items()):
+        target = s["reads"].get(program)
+        if target is None:
+            continue
+        value = given.get(target)
+        if value is None:
+            problems.append(f"{where} does not hand the {program} {target}, which is how it reads {name}")
+        elif s["group"] == "made":
+            if f"${name}" not in value and f"${{{name}" not in value:
+                problems.append(f"{where} hands the {program} {target}={value}, which is not made from {name}")
+        else:
+            default = s.get("default_on", {}).get("all-in-one", s["default"])
+            other = s.get("also_on", {}).get("all-in-one")
+            wanted = f'"${{{name}:-${{{other}:-{default}}}}}"' if other else f'"${{{name}:-{default}}}"'
+            if value != wanted:
+                problems.append(f"{where} hands the {program} {target}={value}; settings.json makes that {wanted}")
 
 # --- the programs -----------------------------------------------------------
 # (program, the name it reads) -> the setting
