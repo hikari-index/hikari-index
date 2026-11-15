@@ -28,7 +28,7 @@ fix, a rule change or a migration the gallery applies itself does not).
 | `providers/annotation/`, `providers/inference/`, `providers/selection/` | Labels, embeddings and the still picker, run by the analyze worker. |
 | `providers/palette-descriptor/` | The colour descriptor (Rust). |
 | `providers/web_derivatives/` | The AVIF web images. |
-| `containers/` | One Dockerfile per image: `worker`, `inference` (the analyze base), `rtx-worker`, `cpu-worker`, `text-encoder`, and `all-in-one` (the gallery, worker and text encoder images' files plus the database in one container; `docker-bake.hcl` builds it). The gallery's is `gallery/Dockerfile`. |
+| `containers/` | One Dockerfile per image: `worker`, `inference` (the analyze base), `rtx-worker`, `cpu-worker`, `text-encoder`, and `all-in-one` (the gallery, worker and text encoder images' files plus the database in one container; `docker-bake.hcl` builds it). The gallery's is `gallery/Dockerfile`. `containers/dump/dump-daily` is not an image: the daily database dump, the one script every way of installing runs. |
 | `tests/` | Synthetic-fixture tests for the providers. |
 | `compose.yaml`, `.env.example` | The single-machine install: every service, built from source, one settings file. |
 | `settings.json` | The one list of settings a person can set, with the one default each has however the tool is installed. A setting is added, renamed or given a new default here, in every wrapper and on the docs' settings page in the same change. |

@@ -1,25 +1,13 @@
 #!/command/with-contenv bash
-# One database dump a day into /config/backups, fourteen kept. Checked
-# hourly, so a container that was off at the usual hour still gets its dump.
-# A copy on the same disk guards against a bad update or a mistake, not a
-# dead disk: copy the config folder somewhere else as well.
-set -uo pipefail
+# One database dump a day into /config/backups, fourteen kept: the script
+# every way of installing runs (containers/dump/dump-daily), here as the
+# programs' user through the database's local socket. A copy on the same
+# disk guards against a bad update or a mistake, not a dead disk: copy
+# the config folder somewhere else as well.
+set -euo pipefail
 . /opt/hikari/aio/env
 
-while true; do
-    dump="/config/backups/hikari-$(date +%F).dump"
-    if ! as_user test -s "$dump"; then
-        if ! tables="$(as_user "$PGBIN/psql" -tAc "select count(*) from information_schema.tables where table_schema = 'public'")"; then
-            log "today's database dump: the database did not answer; trying again in an hour"
-        elif [ "$tables" -gt 0 ]; then
-            if as_user "$PGBIN/pg_dump" --format=custom --file="$dump.part" && as_user mv "$dump.part" "$dump"; then
-                as_user sh -c 'ls -1t /config/backups/hikari-*.dump | tail -n +15 | xargs -r rm --'
-                log "database dumped to $dump"
-            else
-                as_user rm -f "$dump.part"
-                log "today's database dump failed (is the config folder's disk full?); trying again in an hour"
-            fi
-        fi
-    fi
-    sleep 3600
-done
+program \
+    PATH="$PGBIN:/usr/sbin:/usr/bin:/sbin:/bin" \
+    PGHOST=/run/postgresql PGUSER=hikari PGDATABASE=hikari \
+    /opt/hikari/dump-daily /config/backups

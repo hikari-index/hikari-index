@@ -84,7 +84,7 @@ COPY --from=database-reference /reference /opt/hikari/database-reference
 COPY compose.yaml compose.db.yaml /tmp/pin/
 RUN set -eux; \
     for file in compose.yaml compose.db.yaml; do \
-        named="$(awk '$1 == "image:" && $2 ~ /^pgvector\// { print $2 }' "/tmp/pin/$file")"; \
+        named="$(awk '$1 == "image:" { for (i = 2; i <= NF; i++) if ($i ~ /^pgvector\//) print $i }' "/tmp/pin/$file")"; \
         test "$named" = "${DATABASE_IMAGE}" \
             || { echo "$file names the database image '$named' and this build names '${DATABASE_IMAGE}': the three must be the same, whole, digest included (docs/BUILDING.md, The database version)" >&2; exit 1; }; \
     done; \
@@ -149,6 +149,9 @@ RUN set -eux; \
 # The start-up scripts, and the list of programs s6 runs: name, kind, then
 # what must be up first.
 COPY --chmod=0755 containers/all-in-one/scripts/ /opt/hikari/aio/
+# The daily database dump: the same script compose.yaml's backup service
+# runs.
+COPY --chmod=0755 containers/dump/dump-daily /opt/hikari/dump-daily
 RUN set -eux; \
     ! grep -rlq "$(printf '\r')" /opt/hikari/aio \
         || { echo 'the all-in-one scripts have CRLF line endings; check the files out with LF' >&2; exit 1; }; \
