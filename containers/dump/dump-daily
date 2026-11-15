@@ -1,0 +1,48 @@
+#!/bin/bash
+# One dump of the database a day into a folder, fourteen kept. The same
+# script on every way of installing: compose.yaml's `backup` service runs
+# it from the database image, the all-in-one image runs it beside its own
+# database.
+#
+#   dump-daily <folder>
+#
+# The database is found through the usual PG* variables (PGHOST, PGUSER,
+# PGDATABASE, and PGPASSWORD where one is needed). Files are named
+# hikari-YYYY-MM-DD.dump by the UTC date, in pg_dump's custom format
+# (restore with pg_restore). It looks hourly, so an install that was off
+# at the usual hour still gets its dump; a database with no tables yet
+# (a new install before the gallery's first start) is not dumped.
+#
+# A dump on the same disk as the database guards against a bad update or
+# a mistake, not a dead disk: copy the folder somewhere else as well.
+set -uo pipefail
+# A dump holds the whole database: readable by whoever runs this, no one else.
+umask 077
+
+dir="${1:?usage: dump-daily <folder>}"
+log() { echo "[backup] $*"; }
+# A stop ends the wait at once instead of after the hour.
+trap 'exit 0' TERM INT
+
+[ -d "$dir" ] && [ -w "$dir" ] || { log "cannot write to $dir as user $(id -u); no dumps will be made until it is writable"; }
+# A dump that was cut short (a stop, a full disk) is not a dump.
+rm -f "$dir"/*.dump.part 2>/dev/null
+
+while true; do
+    dump="$dir/hikari-$(date -u +%F).dump"
+    if [ ! -s "$dump" ]; then
+        if ! tables="$(psql -tAc "select count(*) from information_schema.tables where table_schema = 'public'" 2>&1)"; then
+            log "today's database dump: the database did not answer ($(printf '%s' "$tables" | tail -n 1)); trying again in an hour"
+        elif [ "$tables" -gt 0 ]; then
+            if pg_dump --format=custom --file="$dump.part" && mv "$dump.part" "$dump"; then
+                ls -1t "$dir"/hikari-*.dump | tail -n +15 | xargs -r rm --
+                log "database dumped to $dump"
+            else
+                rm -f "$dump.part"
+                log "today's database dump failed (is the folder's disk full, and can user $(id -u) write to $dir?); trying again in an hour"
+            fi
+        fi
+    fi
+    sleep 3600 &
+    wait $!
+done
