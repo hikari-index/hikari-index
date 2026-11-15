@@ -62,7 +62,8 @@ services:
     # its data under /var/lib/postgresql/18/docker, so the mount goes at
     # /var/lib/postgresql. This line is THE database version for every
     # way of installing: compose.db.yaml and the all-in-one image are held
-    # to it (docs/BUILDING.md, "The database version").
+    # to it, and the all-in-one build checks that (docs/BUILDING.md, "The
+    # database version").
     image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     restart: unless-stopped
     environment:

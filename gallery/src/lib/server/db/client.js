@@ -36,6 +36,12 @@ async function updateVectorExtension(db) {
     const after = await version();
     if (after !== before) console.log(`[database] pgvector updated from ${before} to ${after}`);
   } catch (error) {
-    console.warn(`[database] could not update the pgvector extension (${error.message}); it stays at its current version`);
+    // drizzle wraps the database's own error; the reason is in its cause.
+    const reason = error.cause?.message ?? error.message;
+    console.warn(
+      `[database] could not confirm the pgvector extension is up to date (${reason}). ` +
+        "The gallery runs on the version the database has. To update it by hand, run " +
+        "ALTER EXTENSION vector UPDATE in this database as the extension's owner or a superuser."
+    );
   }
 }

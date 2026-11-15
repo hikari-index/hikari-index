@@ -76,11 +76,14 @@ USER root
 # its databases with, so text sorts the same here.
 ARG DATABASE_IMAGE
 COPY --from=database-reference /reference /opt/hikari/database-reference
-COPY compose.yaml /tmp/compose.yaml
+COPY compose.yaml compose.db.yaml /tmp/pin/
 RUN set -eux; \
-    grep -Fq "image: ${DATABASE_IMAGE}" /tmp/compose.yaml \
-        || { echo "compose.yaml's database image is not ${DATABASE_IMAGE}: change both together (docs/BUILDING.md, The database version)" >&2; exit 1; }; \
-    rm /tmp/compose.yaml; \
+    for file in compose.yaml compose.db.yaml; do \
+        named="$(awk '$1 == "image:" && $2 ~ /^pgvector\// { print $2 }' "/tmp/pin/$file")"; \
+        test "$named" = "${DATABASE_IMAGE}" \
+            || { echo "$file names the database image '$named' and this build names '${DATABASE_IMAGE}': the three must be the same, whole, digest included (docs/BUILDING.md, The database version)" >&2; exit 1; }; \
+    done; \
+    rm -r /tmp/pin; \
     pg="$(cat /opt/hikari/database-reference/postgresql)"; \
     vector="$(cat /opt/hikari/database-reference/pgvector)"; \
     apt-get update; \

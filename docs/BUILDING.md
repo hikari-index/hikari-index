@@ -53,10 +53,10 @@ Or from images you already have, as named build contexts (the header of
 
 ## The database version
 
-Every way of installing runs the same PostgreSQL and pgvector, and one
-line decides which: the `db` service's image in `compose.yaml`, the
-`pgvector/pgvector:pg18` image at a digest (PostgreSQL 18.7 and pgvector
-0.8.7 since 2026-11).
+The installs this repository defines run the same PostgreSQL and
+pgvector, and one line decides which: the `db` service's image in
+`compose.yaml`, the `pgvector/pgvector:pg18` image at a digest
+(PostgreSQL 18.7 and pgvector 0.8.7 since 2026-11).
 
 - `compose.yaml` and `compose.db.yaml` (the development database) name
   that image at that digest.
@@ -66,21 +66,29 @@ line decides which: the `db` service's image in `compose.yaml`, the
   project documents (the apt repository set up by
   `apt.postgresql.org.sh`; the server, JIT and client packages are the
   ones the image itself is built from), pgvector by its README's APT
-  method. The build stops if its digest and `compose.yaml`'s differ, or
-  if the package repository no longer carries those versions.
-- A container template that names the image by its moving tag
-  (`pgvector/pgvector:pg18`, as the unRAID pgvector-18 app does) gets
-  whatever that tag holds when the container is updated. It can be a
-  minor version ahead of or behind the pin; both work.
+  method. The build stops unless both compose files name the very same
+  image, digest included, and when the package repository no longer
+  carries those versions.
+- A container template you fill in yourself is outside that check. One
+  that names the image by its moving tag (`pgvector/pgvector:pg18`, as
+  the unRAID pgvector-18 app does) gets whatever the tag holds when the
+  container is updated: compatible with the pin, and the gallery works
+  with it, but it can be a minor version ahead of or behind it. To hold
+  such a container to the pin, put the image with its digest, exactly
+  as `compose.yaml` has it, in the template's image field.
 
 To move to a newer database: `docker pull pgvector/pgvector:pg18`, read
-its digest (`docker inspect --format '{{index .RepoDigests 0}}'`), put
-it in `compose.yaml`, `compose.db.yaml` and the all-in-one Dockerfile
-together, and build. Within PostgreSQL 18 a data folder opens on the
-newer server as it is. pgvector asks for one more step after it is
-upgraded, `ALTER EXTENSION vector UPDATE` in the database; the gallery
-runs it at start, in every install, so nobody types it. A move to
-PostgreSQL 19 is a dump and restore and a release of its own.
+its digest (`docker inspect --format '{{index .RepoDigests 0}}' pgvector/pgvector:pg18`),
+put it in `compose.yaml`, `compose.db.yaml` and the all-in-one
+Dockerfile together, and build. Within PostgreSQL 18 a data folder opens
+on the newer server as it is. pgvector asks for one more step after it
+is upgraded, `ALTER EXTENSION vector UPDATE` in the database; the
+gallery runs it at start, after its migrations, so in a normal install
+nobody types it. It needs a gallery that writes (not the read-only
+build) and a database login that owns the extension, which the login
+that created it does; when it cannot, the gallery says why in its log
+and carries on. A move to PostgreSQL 19 is a dump and restore and a
+release of its own.
 
 Checked on 2026-11-15, the pin's image against the all-in-one built
 from it: the same server and pgvector versions, JIT available in both,
