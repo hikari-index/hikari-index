@@ -51,19 +51,20 @@ USER root
 # PostgreSQL 18 and pgvector from the PostgreSQL project's own package
 # repository. The minor version is whatever 18.x is current at build, as
 # the compose install's `pg18` image tag is; `postgres --version` in the
-# image says which. The en_US.UTF-8 locale is the one the official
+# image says which. The repository's signing key is the copy Debian ships
+# in postgresql-common, so the build fetches nothing from postgresql.org's
+# website (which dropped the connection often enough to fail builds).
+# The en_US.UTF-8 locale is the one the official
 # postgres image creates its databases with, so text sorts the same here.
 RUN set -eux; \
     apt-get update; \
-    apt-get install --yes --no-install-recommends locales tzdata xz-utils; \
+    apt-get install --yes --no-install-recommends locales tzdata xz-utils postgresql-common; \
     localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8; \
-    install --directory /usr/share/postgresql-common/pgdg /etc/postgresql-common; \
-    python -c 'import sys, urllib.request; urllib.request.urlretrieve(sys.argv[1], sys.argv[2])' \
-        https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-        /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc; \
+    test -s /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc; \
     echo 'deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main' \
         > /etc/apt/sources.list.d/pgdg.list; \
-    echo 'create_main_cluster = false' > /etc/postgresql-common/createcluster.conf; \
+    sed -ri 's/^#?(create_main_cluster) .*$/\1 = false/' /etc/postgresql-common/createcluster.conf; \
+    grep -qx 'create_main_cluster = false' /etc/postgresql-common/createcluster.conf; \
     apt-get update; \
     apt-get install --yes --no-install-recommends postgresql-18 postgresql-18-pgvector; \
     rm -rf /var/lib/apt/lists/*; \
