@@ -1,0 +1,16 @@
+#!/command/with-contenv bash
+# The gallery, as the gallery image runs it.
+set -euo pipefail
+. /opt/hikari/aio/env
+
+export NODE_ENV=production PORT=3000 HOST=0.0.0.0 BODY_SIZE_LIMIT=64M
+export ORIGIN="${HIKARI_ORIGIN:-${ORIGIN:-}}"
+export HIKARI_RUNS=/data/runs
+export ENCODER_URL=http://127.0.0.1:5187
+export HIKARI_SHOKO_API_KEY_FILE=/config/shoko-api-key
+# This container's own analyze token, then any you add for workers on
+# other machines ("name:token,name:token").
+export HIKARI_WORKER_TOKENS="analyze:${HIKARI_ANALYZE_TOKEN}${HIKARI_EXTRA_WORKER_TOKENS:+,${HIKARI_EXTRA_WORKER_TOKENS}}"
+
+cd /opt/hikari/gallery
+exec s6-setuidgid hikari node build

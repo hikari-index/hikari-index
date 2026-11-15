@@ -1,0 +1,98 @@
+#!/command/with-contenv bash
+# First thing on every start: take the user id asked for, make the
+# folders, and on the first start make the secrets. A problem here stops
+# the container with a line that says what to change.
+set -euo pipefail
+
+log() { echo "[hikari] $*"; }
+fail() { echo "[hikari] cannot start: $*" >&2; exit 1; }
+
+PUID="${PUID:-10001}"
+PGID="${PGID:-10001}"
+case "$PUID$PGID" in *[!0-9]*) fail "PUID and PGID must be numbers (got '$PUID' and '$PGID')" ;; esac
+[ "$PUID" -ne 0 ] || fail "PUID is 0; the database does not run as root. Use an ordinary user id (unRAID's is 99)"
+
+origin="${HIKARI_ORIGIN:-${ORIGIN:-}}"
+case "$origin" in
+    http://?*|https://?*) ;;
+    *) fail "set HIKARI_ORIGIN to the address you open the gallery at, for example http://192.0.2.10:5183 (the sign-in form refuses any other)" ;;
+esac
+
+for mount in /config /data /images; do
+    mountpoint -q "$mount" || fail "nothing is mounted at $mount; without it everything there is lost when the container is updated"
+done
+mountpoint -q /source || fail "nothing is mounted at /source (your video, read-only)"
+
+groupmod --non-unique --gid "$PGID" hikari
+usermod --non-unique --uid "$PUID" hikari
+
+install --directory --owner hikari --group hikari /run/postgresql /data/runs
+install --directory --owner hikari --group hikari --mode 0700 /config/db
+install --directory --owner hikari --group hikari --mode 0750 /config/backups /config/worker-tokens
+# Only what is owned by someone else is handed over, so a restart does not
+# walk a large library; a changed PUID walks it once.
+for dir in /config /data /images; do
+    find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown --no-dereference hikari:hikari {} +
+done
+for dir in /config /data /data/runs /images; do
+    s6-setuidgid hikari test -w "$dir" || fail "user $PUID cannot write to $dir"
+done
+
+if [ -s /config/db/PG_VERSION ] && [ "$(cat /config/db/PG_VERSION)" != 18 ]; then
+    fail "the database in /config/db was made by PostgreSQL $(cat /config/db/PG_VERSION) and this image runs 18; go back to the image that made it"
+fi
+
+# The secrets: the same ones, made the same way, as the compose install's
+# first-run step (the gallery's own script), kept in /config/hikari.env.
+# An empty file /config/reset-admin-password makes a new admin sign-in.
+secrets=/config/hikari.env
+make_secrets() {
+    s6-setuidgid hikari node /opt/hikari/gallery/scripts/first-run.js "${HIKARI_ADMIN_USER:-admin}"
+}
+show_password() {
+    password="$(printf '%s\n' "$1" | sed -n 's/^ *password: *//p')"
+    [ -n "$password" ] || fail "the first-run script printed no password"
+    log "================================================================"
+    log "Your admin sign-in (shown once; it is not stored anywhere):"
+    log "  user:     ${HIKARI_ADMIN_USER:-admin}"
+    log "  password: $password"
+    log "To make a new one later, put an empty file named"
+    log "reset-admin-password in the config folder and restart."
+    log "================================================================"
+}
+umask 077
+if [ ! -s "$secrets" ]; then
+    [ ! -e /config/db/PG_VERSION ] || fail "/config/hikari.env is missing but /config/db holds a database made with its password; put the file back"
+    out="$(make_secrets)"
+    printf '%s\n' "$out" | grep -E '^HIKARI_[A-Z_]+=' > "$secrets.new"
+    for key in HIKARI_DB_PASSWORD HIKARI_ADMIN_USER HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
+        grep -q "^$key=." "$secrets.new" || fail "the first-run script did not make $key"
+    done
+    mv "$secrets.new" "$secrets"
+    show_password "$out"
+elif [ -e /config/reset-admin-password ]; then
+    out="$(make_secrets)"
+    { grep -Ev '^HIKARI_(ADMIN_USER|ADMIN_PASSWORD_HASH|SESSION_SECRET)=' "$secrets"
+      printf '%s\n' "$out" | grep -E '^HIKARI_(ADMIN_USER|ADMIN_PASSWORD_HASH|SESSION_SECRET)='
+    } > "$secrets.new"
+    [ "$(grep -c '^HIKARI_ADMIN_PASSWORD_HASH=.' "$secrets.new")" = 1 ] || fail "could not make a new admin sign-in"
+    mv "$secrets.new" "$secrets"
+    rm /config/reset-admin-password
+    show_password "$out"
+fi
+chown hikari:hikari "$secrets"
+chmod 0600 "$secrets"
+
+# The analyze worker's token, where an analyze container on this host can
+# read it (HIKARI_WORKER_TOKEN_FILE) with nothing pasted.
+umask 027
+sed -n 's/^HIKARI_ANALYZE_TOKEN=//p' "$secrets" | tr -d '\n' > /config/worker-tokens/analyze
+chown hikari:hikari /config/worker-tokens/analyze
+
+# The gallery reads the Shoko key as its own user.
+if [ -e /config/shoko-api-key ]; then
+    chown hikari:hikari /config/shoko-api-key
+    chmod 0400 /config/shoko-api-key
+fi
+
+log "$HIKARI_GALLERY_VERSION and $HIKARI_WORKER_VERSION starting as user $PUID:$PGID; gallery at $origin"

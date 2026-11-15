@@ -1,0 +1,29 @@
+#!/command/with-contenv bash
+# Once the database answers: make the `hikari` database on a new install,
+# and when this is a different version from the one that last ran here,
+# dump the database before the gallery upgrades its tables.
+set -euo pipefail
+. /opt/hikari/aio/env
+fail() { echo "[hikari] cannot start: $*" >&2; exit 1; }
+
+for _ in $(seq 120); do
+    "$PGBIN/pg_isready" --quiet --dbname=postgres && break
+    sleep 1
+done
+"$PGBIN/pg_isready" --quiet --dbname=postgres || fail "the database did not come up in two minutes; its lines above say why"
+
+if [ "$(s6-setuidgid hikari "$PGBIN/psql" --dbname=postgres -tAc "select 1 from pg_database where datname = 'hikari'")" != 1 ]; then
+    s6-setuidgid hikari "$PGBIN/createdb" hikari
+fi
+
+last="$(cat /config/version 2>/dev/null || true)"
+if [ -n "$last" ] && [ "$last" != "$HIKARI_GALLERY_VERSION" ]; then
+    dump="/config/backups/before-${HIKARI_GALLERY_VERSION}-$(date +%Y%m%d-%H%M%S).dump"
+    log "this was $last and is now $HIKARI_GALLERY_VERSION: dumping the database to $dump first"
+    s6-setuidgid hikari "$PGBIN/pg_dump" --format=custom --file="$dump.part" \
+        || fail "the dump before the update failed (is the config folder's disk full?); nothing was changed. The previous image still runs on this database"
+    mv "$dump.part" "$dump"
+    ls -1t /config/backups/before-*.dump | tail -n +6 | xargs -r rm --
+fi
+echo "$HIKARI_GALLERY_VERSION" > /config/version
+chown hikari:hikari /config/version

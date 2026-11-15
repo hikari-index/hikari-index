@@ -1,0 +1,18 @@
+#!/command/with-contenv bash
+# The database. Made on the first start in /config/db; reachable only from
+# inside this container (the local socket, and 127.0.0.1 with the password).
+set -euo pipefail
+. /opt/hikari/aio/env
+
+if [ ! -s /config/db/PG_VERSION ]; then
+    log "making the database in /config/db"
+    pwfile="$(mktemp)"
+    printf '%s' "$HIKARI_DB_PASSWORD" > "$pwfile"
+    chown hikari "$pwfile"
+    s6-setuidgid hikari "$PGBIN/initdb" --pgdata=/config/db --username=hikari --pwfile="$pwfile" \
+        --auth-local=trust --auth-host=scram-sha-256 --encoding=UTF8 --locale=en_US.UTF-8 > /dev/null
+    rm "$pwfile"
+fi
+
+exec s6-setuidgid hikari "$PGBIN/postgres" -D /config/db \
+    -c listen_addresses=127.0.0.1 -c unix_socket_directories=/run/postgresql

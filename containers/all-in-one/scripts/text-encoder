@@ -1,0 +1,12 @@
+#!/command/with-contenv bash
+# The text encoder for mood search, as the text-encoder image runs it,
+# listening inside the container only.
+set -euo pipefail
+
+export PYTHONPATH=/opt/hikari/inference HOME=/home/hikari
+export HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+
+cd /
+exec s6-setuidgid hikari /opt/venv/bin/python -m inference.encode_server \
+    --model-dir /opt/hikari/models/siglip2-text --device cpu --host 127.0.0.1 --port 5187

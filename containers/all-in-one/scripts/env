@@ -1,0 +1,11 @@
+# Sourced by the programs' start scripts: the settings made on first start
+# plus the fixed places things live in this image.
+set -a
+. /config/hikari.env
+set +a
+export DATABASE_URL="postgres://hikari:${HIKARI_DB_PASSWORD}@127.0.0.1:5432/hikari"
+export HIKARI_IMAGES=/images
+export PGHOST=/run/postgresql PGUSER=hikari PGDATABASE=hikari
+PGBIN=/usr/lib/postgresql/18/bin
+
+log() { echo "[hikari] $*"; }

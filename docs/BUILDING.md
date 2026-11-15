@@ -16,6 +16,7 @@ worker and gallery builds refuse to run without one).
 | analyze worker, NVIDIA GPU | `containers/rtx-worker/Dockerfile` | the inference base | 18 GB |
 | analyze worker, CPU | `containers/cpu-worker/Dockerfile` | `python:3.11-slim-bookworm`, weights fetched at the inference base's pins | 6 GB |
 | text encoder (mood search) | `containers/text-encoder/Dockerfile` | `python:3.11-slim-bookworm` | 3.9 GB |
+| all-in-one (gallery, database, worker, text encoder) | `containers/all-in-one/Dockerfile` | the worker image, with the gallery's and text encoder's files copied in | 6 GB |
 
 ```bash
 docker build --build-arg HIKARI_GALLERY_VERSION=<tag> -t hikari-index/gallery:<tag> gallery
@@ -35,6 +36,20 @@ The CPU worker stands alone:
 ```bash
 docker build -f containers/cpu-worker/Dockerfile --build-arg HIKARI_WORKER_VERSION=<tag> -t hikari-index/cpu-worker:<tag> .
 ```
+
+The all-in-one image is put together from the gallery, worker and text
+encoder images rather than built again, so what those three produce is
+the same in it byte for byte. It adds PostgreSQL 18 with pgvector (the
+current 18.x from the PostgreSQL project's package repository) and
+s6-overlay (the exact release by sha256) to start and stop the parts in
+order. One command builds the three and then the image:
+
+```bash
+VERSION=<version> docker buildx bake -f docker-bake.hcl all-in-one
+```
+
+Or from images you already have, as named build contexts (the header of
+`containers/all-in-one/Dockerfile` has the full command).
 
 The inference base and the CPU worker both download the models from
 Hugging Face at the same pinned revisions and check the sha256 of every

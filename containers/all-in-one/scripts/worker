@@ -1,0 +1,16 @@
+#!/command/with-contenv bash
+# The worker that reads your video, as the worker image runs it. It waits
+# for the gallery to answer first: by then the tables are up to date.
+set -euo pipefail
+. /opt/hikari/aio/env
+
+until node -e "fetch('http://127.0.0.1:3000/series').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; do
+    sleep 2
+done
+
+export PYTHONPATH=/app HOME=/home/hikari
+export HIKARI_OUTPUT=/data
+export HIKARI_SOURCE_ROOTS="${HIKARI_SOURCE_ROOTS:-library=/source}"
+
+cd /app
+exec s6-setuidgid hikari python -m hikari_worker

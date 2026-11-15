@@ -28,7 +28,7 @@ fix, a rule change or a migration the gallery applies itself does not).
 | `providers/annotation/`, `providers/inference/`, `providers/selection/` | Labels, embeddings and the still picker, run by the analyze worker. |
 | `providers/palette-descriptor/` | The colour descriptor (Rust). |
 | `providers/web_derivatives/` | The AVIF web images. |
-| `containers/` | One Dockerfile per image: `worker`, `inference` (the analyze base), `rtx-worker`, `cpu-worker`, `text-encoder`. The gallery's is `gallery/Dockerfile`. |
+| `containers/` | One Dockerfile per image: `worker`, `inference` (the analyze base), `rtx-worker`, `cpu-worker`, `text-encoder`, and `all-in-one` (the gallery, worker and text encoder images' files plus the database in one container; `docker-bake.hcl` builds it). The gallery's is `gallery/Dockerfile`. |
 | `tests/` | Synthetic-fixture tests for the providers. |
 | `compose.yaml`, `.env.example` | The single-machine install: every service, built from source, one settings file. |
 | `compose.rtx-worker.yaml`, `compose.cpu-worker.yaml`, `compose.db.yaml` | An analyze worker on a second machine (GPU or CPU), and a database for gallery development. Each has its `.env.*.example`. |
