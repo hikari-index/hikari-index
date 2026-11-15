@@ -97,7 +97,14 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    # It runs as root, the user the database image starts as, with one
+    # capability: the one that lets it write into a folder of yours that
+    # root does not own. The dumps are root's, mode 0600.
     read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
     security_opt:
       - no-new-privileges:true
     environment:

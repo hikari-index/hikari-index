@@ -33,6 +33,8 @@ while true; do
     if [ ! -s "$dump" ]; then
         if ! tables="$(psql -tAc "select count(*) from information_schema.tables where table_schema = 'public'" 2>&1)"; then
             log "today's database dump: the database did not answer ($(printf '%s' "$tables" | tail -n 1)); trying again in an hour"
+        elif ! [ "$tables" -ge 0 ] 2>/dev/null; then
+            log "today's database dump: could not tell whether the database has tables yet (it said: $(printf '%s' "$tables" | tail -n 1)); trying again in an hour"
         elif [ "$tables" -gt 0 ]; then
             if pg_dump --format=custom --file="$dump.part" && mv "$dump.part" "$dump"; then
                 ls -1t "$dir"/hikari-*.dump | tail -n +15 | xargs -r rm --
