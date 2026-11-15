@@ -33,12 +33,15 @@ install --directory --owner hikari --group hikari /run/postgresql
 # The three folders themselves, then everything in them once, and again
 # only when PUID or PGID changes: walking a large library on every start
 # would wake the disks and hold the start up for nothing. Links are
-# handed over as links, never followed.
+# handed over as links, never followed, and each file is named from
+# inside its own folder (-execdir), so a folder swapped for a link while
+# the walk runs cannot send the chown somewhere else.
 chown hikari:hikari /config /data /images
 if [ "$(cat /config/.owner 2>/dev/null || true)" != "$PUID:$PGID" ]; then
     log "handing the config, data and images folders to user $PUID:$PGID (once; a large library takes a while)"
     for dir in /config /data /images; do
-        find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) -exec chown --no-dereference hikari:hikari {} +
+        PATH=/usr/sbin:/usr/bin:/sbin:/bin find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) \
+            -execdir /bin/chown --no-dereference hikari:hikari {} +
     done
 fi
 # A Shoko key put in the folder later arrives owned by whoever copied it;
