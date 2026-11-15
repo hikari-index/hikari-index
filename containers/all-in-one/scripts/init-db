@@ -34,19 +34,6 @@ if [ "$last" != "$HIKARI_GALLERY_VERSION" ] && [ "$tables" -gt 0 ]; then
     as_user sh -c 'ls -1t /config/backups/before-*.dump | tail -n +6 | xargs -r rm --'
 fi
 
-# pgvector's upgrade step (its README, "Upgrading"): after a newer
-# pgvector is installed, each database that uses it runs this once. A new
-# image can carry a newer pgvector, and a database moved here from the
-# compose install may come from an older one. It does nothing when the
-# database is already current, and comes after the dump above.
-before="$(as_user "$PGBIN/psql" -tAc "select extversion from pg_extension where extname = 'vector'")"
-if [ -n "$before" ]; then
-    as_user "$PGBIN/psql" --quiet -c "alter extension vector update" \
-        || fail "could not bring the database's pgvector ($before) up to this image's; its lines above say why"
-    after="$(as_user "$PGBIN/psql" -tAc "select extversion from pg_extension where extname = 'vector'")"
-    [ "$before" = "$after" ] || log "pgvector in the database updated from $before to $after"
-fi
-
 if [ "$last" != "$HIKARI_GALLERY_VERSION" ]; then
     as_user sh -c 'echo "$1" > /config/version.new && mv /config/version.new /config/version' sh "$HIKARI_GALLERY_VERSION"
 fi

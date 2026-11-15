@@ -58,9 +58,12 @@ x-analyze-environment: &analyze-environment
 
 services:
   db:
-    # PostgreSQL 18 with pgvector. 18 keeps its data under
-    # /var/lib/postgresql/18/docker, so the mount goes at /var/lib/postgresql.
-    image: pgvector/pgvector:pg18@sha256:2ba9ca5f2e7daa0f0e7723cba1ee9167bab54efd3640516a44ac1a928dd67e7a
+    # PostgreSQL 18 with pgvector (18.7 and 0.8.7 at this digest). 18 keeps
+    # its data under /var/lib/postgresql/18/docker, so the mount goes at
+    # /var/lib/postgresql. This line is THE database version for every
+    # way of installing: compose.db.yaml and the all-in-one image are held
+    # to it (docs/BUILDING.md, "The database version").
+    image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     restart: unless-stopped
     environment:
       POSTGRES_DB: hikari

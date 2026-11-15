@@ -36,6 +36,21 @@ ARG S6_OVERLAY_VERSION="3.2.3.2"
 ARG S6_OVERLAY_NOARCH_SHA256="5379750ed30a84bbd2e2dd74847ba6b5bd29cd0b2e3ea2ec58049b57eb2eda12"
 ARG S6_OVERLAY_X86_64_SHA256="e6befcc96a437a3831386ecfc51808c5d3e939dc5fe3c02ae9284599e8aa2408"
 
+# THE database version is one line in compose.yaml: the pgvector image at
+# a digest. This is that same image, used here only to read which
+# PostgreSQL and pgvector it holds; the build stops if the digest below
+# and compose.yaml's differ (docs/BUILDING.md, "The database version").
+ARG DATABASE_IMAGE="pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782"
+
+FROM ${DATABASE_IMAGE} AS database-reference
+RUN set -eu; \
+    mkdir /reference; \
+    dpkg-query -W -f='${Version}' postgresql-18 > /reference/postgresql; \
+    awk -F"'" '/^default_version/ { print $2 }' /usr/share/postgresql/18/extension/vector.control > /reference/pgvector; \
+    test -s /reference/postgresql; \
+    test -s /reference/pgvector; \
+    echo "reference: PostgreSQL $(cat /reference/postgresql), pgvector $(cat /reference/pgvector)"
+
 FROM gallery AS gallery-image
 FROM text-encoder AS text-encoder-image
 
@@ -48,21 +63,26 @@ ARG S6_OVERLAY_X86_64_SHA256
 
 USER root
 
-# PostgreSQL 18 and pgvector, installed the way each project documents:
-# the PostgreSQL apt repository set up by its own script (the Quickstart at
+# PostgreSQL and pgvector at exactly the versions the reference image
+# holds, installed the way each project documents: the PostgreSQL apt
+# repository set up by its own script (the Quickstart at
 # https://wiki.postgresql.org/wiki/Apt: install postgresql-common, run
-# apt.postgresql.org.sh; the script uses the signing key that package
-# ships, so nothing is fetched from postgresql.org's website), then
-# pgvector's APT method (`postgresql-18-pgvector`, its README's
-# "Additional Installation Methods"). The image compose.yaml uses,
-# pgvector/pgvector:pg18, is the postgres image (the same PostgreSQL
-# packages) with pgvector compiled in; it is pinned by digest and this is
-# not, so the two can be a minor version apart (`dpkg-query -W
-# 'postgresql-18*'` in the image says what it has).
-# init-db runs pgvector's documented upgrade step for that reason.
-# The en_US.UTF-8 locale is the one the official
-# postgres image creates its databases with, so text sorts the same here.
+# apt.postgresql.org.sh; it uses the signing key that package ships),
+# then the server, its JIT package and client at the reference's package
+# version (the same packages the postgres image installs, and the
+# reference image is built on), and pgvector by its README's APT method
+# at the reference's version (there it is compiled from the same
+# release). The en_US.UTF-8 locale is the one the postgres image creates
+# its databases with, so text sorts the same here.
+ARG DATABASE_IMAGE
+COPY --from=database-reference /reference /opt/hikari/database-reference
+COPY compose.yaml /tmp/compose.yaml
 RUN set -eux; \
+    grep -Fq "image: ${DATABASE_IMAGE}" /tmp/compose.yaml \
+        || { echo "compose.yaml's database image is not ${DATABASE_IMAGE}: change both together (docs/BUILDING.md, The database version)" >&2; exit 1; }; \
+    rm /tmp/compose.yaml; \
+    pg="$(cat /opt/hikari/database-reference/postgresql)"; \
+    vector="$(cat /opt/hikari/database-reference/pgvector)"; \
     apt-get update; \
     apt-get install --yes --no-install-recommends locales tzdata xz-utils postgresql-common; \
     localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8; \
@@ -70,10 +90,16 @@ RUN set -eux; \
     grep -qx 'create_main_cluster = false' /etc/postgresql-common/createcluster.conf; \
     /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y; \
     grep -q '^Suites: bookworm-pgdg$' /etc/apt/sources.list.d/pgdg.sources; \
-    apt-get install --yes --no-install-recommends postgresql-18 postgresql-18-pgvector; \
+    vector_package="$(apt-cache madison postgresql-18-pgvector | awk -v v="$vector" '$3 ~ "^" v "-" { print $3; exit }')"; \
+    test -n "$vector_package" \
+        || { echo "the PostgreSQL repository has no postgresql-18-pgvector $vector (the reference image's version)" >&2; exit 1; }; \
+    apt-get install --yes --no-install-recommends \
+        "postgresql-18=$pg" "postgresql-18-jit=$pg" "postgresql-client-18=$pg" "libpq5=$pg" \
+        "postgresql-18-pgvector=$vector_package"; \
     rm -rf /var/lib/apt/lists/*; \
-    /usr/lib/postgresql/18/bin/postgres --version; \
-    test -f /usr/share/postgresql/18/extension/vector.control
+    test "$(dpkg-query -W -f='${Version}' postgresql-18)" = "$pg"; \
+    test "$(awk -F"'" '/^default_version/ { print $2 }' /usr/share/postgresql/18/extension/vector.control)" = "$vector"; \
+    /usr/lib/postgresql/18/bin/postgres --version
 
 # s6-overlay starts the programs in order, restarts one that dies and
 # stops them in order (ISC licence). The exact release by sha256.

@@ -16,7 +16,7 @@ worker and gallery builds refuse to run without one).
 | analyze worker, NVIDIA GPU | `containers/rtx-worker/Dockerfile` | the inference base | 18 GB |
 | analyze worker, CPU | `containers/cpu-worker/Dockerfile` | `python:3.11-slim-bookworm`, weights fetched at the inference base's pins | 6 GB |
 | text encoder (mood search) | `containers/text-encoder/Dockerfile` | `python:3.11-slim-bookworm` | 3.9 GB |
-| all-in-one (gallery, database, worker, text encoder) | `containers/all-in-one/Dockerfile` | the worker image, with the gallery's and text encoder's files copied in | 6 GB |
+| all-in-one (gallery, database, worker, text encoder) | `containers/all-in-one/Dockerfile` | the worker image, with the gallery's and text encoder's files copied in | 6.1 GB |
 
 ```bash
 docker build --build-arg HIKARI_GALLERY_VERSION=<tag> -t hikari-index/gallery:<tag> gallery
@@ -39,10 +39,10 @@ docker build -f containers/cpu-worker/Dockerfile --build-arg HIKARI_WORKER_VERSI
 
 The all-in-one image is put together from the gallery, worker and text
 encoder images rather than built again, so what those three produce is
-the same in it byte for byte. It adds PostgreSQL 18 with pgvector (the
-current 18.x from the PostgreSQL project's package repository) and
-s6-overlay (the exact release by sha256) to start and stop the parts in
-order. One command builds the three and then the image:
+the same in it byte for byte. It adds PostgreSQL with pgvector at the
+versions the database image holds (next section) and s6-overlay (the
+exact release by sha256) to start and stop the parts in order. One
+command builds the three and then the image:
 
 ```bash
 VERSION=<version> docker buildx bake -f docker-bake.hcl all-in-one
@@ -50,6 +50,44 @@ VERSION=<version> docker buildx bake -f docker-bake.hcl all-in-one
 
 Or from images you already have, as named build contexts (the header of
 `containers/all-in-one/Dockerfile` has the full command).
+
+## The database version
+
+Every way of installing runs the same PostgreSQL and pgvector, and one
+line decides which: the `db` service's image in `compose.yaml`, the
+`pgvector/pgvector:pg18` image at a digest (PostgreSQL 18.7 and pgvector
+0.8.7 since 2026-11).
+
+- `compose.yaml` and `compose.db.yaml` (the development database) name
+  that image at that digest.
+- The all-in-one image names it too (`DATABASE_IMAGE` in its
+  Dockerfile), reads the PostgreSQL package version and the pgvector
+  version out of it, and installs exactly those: PostgreSQL the way its
+  project documents (the apt repository set up by
+  `apt.postgresql.org.sh`; the server, JIT and client packages are the
+  ones the image itself is built from), pgvector by its README's APT
+  method. The build stops if its digest and `compose.yaml`'s differ, or
+  if the package repository no longer carries those versions.
+- A container template that names the image by its moving tag
+  (`pgvector/pgvector:pg18`, as the unRAID pgvector-18 app does) gets
+  whatever that tag holds when the container is updated. It can be a
+  minor version ahead of or behind the pin; both work.
+
+To move to a newer database: `docker pull pgvector/pgvector:pg18`, read
+its digest (`docker inspect --format '{{index .RepoDigests 0}}'`), put
+it in `compose.yaml`, `compose.db.yaml` and the all-in-one Dockerfile
+together, and build. Within PostgreSQL 18 a data folder opens on the
+newer server as it is. pgvector asks for one more step after it is
+upgraded, `ALTER EXTENSION vector UPDATE` in the database; the gallery
+runs it at start, in every install, so nobody types it. A move to
+PostgreSQL 19 is a dump and restore and a release of its own.
+
+Checked on 2026-11-15, the pin's image against the all-in-one built
+from it: the same server and pgvector versions, JIT available in both,
+and every database setting equal except the one meant to differ (the
+all-in-one's database listens inside its container only). A database
+made at the previous pin (18.6, 0.8.6) opened at this one, and the
+gallery moved its pgvector to 0.8.7.
 
 The inference base and the CPU worker both download the models from
 Hugging Face at the same pinned revisions and check the sha256 of every
