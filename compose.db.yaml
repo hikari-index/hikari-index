@@ -8,10 +8,13 @@
 #   docker compose --env-file .env.db -f compose.db.yaml down -v     # deletes the data
 services:
   db:
-    # A development database. A data volume starts only on the major
-    # version that wrote it: pick 17 or 18 once (compose.yaml uses
-    # 18) and keep it; moving between them is a dump and restore.
-    image: pgvector/pgvector:pg17
+    # The same image, at the same digest, as compose.yaml's database
+    # (docs/BUILDING.md, "The database version"). Until 2026-11 this file
+    # used PostgreSQL 17 with a volume named hikari-db; a data folder
+    # starts only on the major version that wrote it, so this one has a
+    # new volume name and leaves an old 17 volume alone (moving its
+    # contents over is a dump and restore).
+    image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${HIKARI_DB_NAME:?set in .env.db}
@@ -20,7 +23,7 @@ services:
     ports:
       - "${HIKARI_DB_BIND:-127.0.0.1}:${HIKARI_DB_PORT:-5432}:5432"
     volumes:
-      - hikari-db:/var/lib/postgresql/data
+      - hikari-db-18:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
@@ -28,4 +31,4 @@ services:
       retries: 20
 
 volumes:
-  hikari-db:
+  hikari-db-18:
