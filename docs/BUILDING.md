@@ -65,13 +65,6 @@ extension, which the login that created it does; when it cannot, the
 gallery says why in its log and carries on. A move to PostgreSQL 19 is a
 dump and restore and a release of its own.
 
-Checked on 2026-11-15 with a database of 180 stills made at the previous
-pin (18.6, 0.8.6): it opened at this one under the released 1.4.0
-gallery, which leaves pgvector at 0.8.6; this gallery moved it to 0.8.7;
-and going back to the previous pin and the 1.4.0 gallery worked. The
-distances between stills came out the same at every step. Not checked:
-mood search and an import after going back.
-
 The inference base and the CPU worker both download the models from
 Hugging Face at the same pinned revisions and check the sha256 of every
 weight file and of the tagger's tag list (configuration and tokenizer files come with the pinned revision

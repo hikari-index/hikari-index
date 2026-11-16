@@ -28,7 +28,7 @@ Settings (environment):
     HIKARI_SHARE          where the data folder is mounted, default /share
     HIKARI_DEVICE         default "cuda"
     HIKARI_POLL_SECONDS   how often an idle worker asks for work, default
-                          30 (settings.json; unset and empty both mean it)
+                          30 (unset and empty both mean it)
     HIKARI_WORKER_STANDBY "1" = take a stage only while no regular analyze
                           worker has checked in for 10 minutes (the
                           always-on CPU machine standing in for a GPU one)
