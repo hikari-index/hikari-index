@@ -182,9 +182,12 @@ RUN set -eux; \
 
 # Stopping, in order: the worker gets up to a minute to hand its stage
 # back, the gallery ten seconds, and then the database is asked to shut
-# down (SIGINT, its "fast" shutdown). That needs the container to be
-# given the time: start it with `--stop-timeout 120`, or Docker's own
-# ten seconds cuts it short and kills what is still running.
+# down (SIGINT, its "fast" shutdown). `--stop-timeout 120` gives the
+# container that time under plain Docker. unRAID stops a container with
+# its own Docker Stop Timeout instead (10 s by default) whatever the
+# container says; measured with that limit while a film was extracting:
+# the worker stopped at once and the database was shut down cleanly five
+# seconds in, and the stage ran again at the next start.
 
 # The locale and PYTHONPATH here stay the worker image's, and only the
 # start scripts see them: each program gets its own environment from its
