@@ -91,7 +91,7 @@ fi
 # a different token for the name analyze in HIKARI_WORKER_TOKENS cannot
 # work. The same pair is fine.
 others="$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -vxF "analyze:$token" || true)"
-if printf '%s\n' "$others" | grep -q '^analyze:'; then
+if printf '%s\n' "$others" | grep '^analyze:' > /dev/null; then
     fail "HIKARI_WORKER_TOKENS gives the name analyze a different token from the one this container made; remove that pair (the container's own is in worker-tokens/analyze in the config folder)"
 fi
 
