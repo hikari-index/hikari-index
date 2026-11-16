@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>hikari-index-analyze</Name>
+  <Repository>ghcr.io/hikari-index/cpu-worker:latest</Repository>
+  <Registry>https://github.com/hikari-index/hikari-index/pkgs/container/cpu-worker</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/hikari-index/hikari-index/issues</Support>
+  <Project>https://github.com/hikari-index/hikari-index</Project>
+  <ReadMe>https://docs.hikari-index.moe/</ReadMe>
+  <Overview>The analyze worker for Hikari Index, on CPU: it describes each frame (tags, faces, shot size, camera angle, similarity) and picks the stills. Install "hikari-index" first and start it once; this container then finds its token in that container's Config folder, so there is nothing to paste.&#xD;
+&#xD;
+It is the heavy part: a large image (about 3.5 GB to download) and, while it works, about 1 GB of memory and every CPU core you leave it, for roughly eight minutes an episode on four cores. Pin it to a few cores if the server has other work. It waits quietly when there is nothing to do.</Overview>
+  <Category>MediaApp:Photos Tools:</Category>
+  <TemplateURL>https://raw.githubusercontent.com/hikari-index/hikari-index/main/templates/hikari-index-analyze.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/hikari-index/hikari-index/main/gallery/static/icon.png</Icon>
+  <License>AGPL-3.0-or-later</License>
+  <ExtraParams>--user 99:100 --read-only --tmpfs /tmp:size=4g,mode=1777 --tmpfs /home/hikari:size=256m,mode=1777 --cap-drop ALL --security-opt no-new-privileges --stop-timeout 60</ExtraParams>
+  <Requires>hikari-index, started once. Use the same version of both. Extra Parameters runs this container as user 99:100, the hikari-index template's PUID and PGID; if you changed those, change --user here to match.</Requires>
+  <Config Name="Gallery" Target="HIKARI_GALLERY_URL" Default="http://172.17.0.1:5183" Mode="" Description="Where this container reaches the gallery. The default is this server, seen from a bridge container, on the gallery's usual port; change the port if you changed the gallery's Web port. If this container's log says the gallery is not reachable, put the server's own address here instead, for example http://192.168.1.10:5183." Type="Variable" Display="always" Required="true" Mask="false">http://172.17.0.1:5183</Config>
+  <Config Name="Data" Target="/share" Default="" Mode="ro" Description="The same folder as the hikari-index container's Data. Read-only." Type="Path" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Standby" Target="HIKARI_WORKER_STANDBY" Default="" Mode="" Description="Optional. 1 makes this worker a fallback: it takes work only when no regular analyze worker (a GPU machine, say) has checked in for ten minutes." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Check for work every" Target="HIKARI_POLL_SECONDS" Default="30" Mode="" Description="How often it asks for work when it has none, in seconds." Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="Token folder" Target="/run/hikari-tokens" Default="/mnt/user/appdata/hikari-index/worker-tokens" Mode="ro" Description="The worker-tokens folder inside the hikari-index container's Config folder." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/hikari-index/worker-tokens</Config>
+  <Config Name="Token file" Target="HIKARI_WORKER_TOKEN_FILE" Default="/run/hikari-tokens/analyze" Mode="" Description="" Type="Variable" Display="advanced-hide" Required="true" Mask="false">/run/hikari-tokens/analyze</Config>
+  <Config Name="Worker name" Target="HIKARI_WORKER_ID" Default="analyze" Mode="" Description="The name the token belongs to. Leave it." Type="Variable" Display="advanced-hide" Required="true" Mask="false">analyze</Config>
+  <Config Name="Home folder" Target="HOME" Default="/home/hikari" Mode="" Description="" Type="Variable" Display="advanced-hide" Required="true" Mask="false">/home/hikari</Config>
+  <Config Name="Device" Target="HIKARI_DEVICE" Default="cpu" Mode="" Description="" Type="Variable" Display="advanced-hide" Required="true" Mask="false">cpu</Config>
+</Container>
