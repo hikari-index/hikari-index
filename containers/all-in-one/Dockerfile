@@ -31,9 +31,9 @@
 #
 # Mounts: /config (settings it makes, the database, database dumps),
 # /data (run records and original frames), /images (web images),
-# /source read-only (your video). Settings: the ones settings.json lists
-# for the all-in-one, under the same names and with the same defaults as
-# every other install (HIKARI_ORIGIN is required here), plus PUID and
+# /source read-only (your video). Settings: the gallery's and the
+# worker's, under the same names and with the same defaults as
+# compose.yaml gives them (HIKARI_ORIGIN is required here), plus PUID and
 # PGID. Each program is started with its own settings and nothing else
 # (scripts/env, `program`).
 

@@ -1,10 +1,10 @@
 #!/command/with-contenv bash
 # The worker that reads your video, as the worker image runs it. The
 # environment below is what compose.yaml's worker service gives it (the
-# settings, one per line, in the form tests/settings/check.py reads) and
-# what the worker image itself sets (containers/worker/Dockerfile's ENV,
-# copied here by hand), with this container's folders. It waits for the
-# gallery to answer first: by then the tables are up to date.
+# settings, one per line, same names and defaults) and what the worker
+# image itself sets (containers/worker/Dockerfile's ENV), with this
+# container's folders. It waits for the gallery to answer first: by then
+# the tables are up to date.
 set -euo pipefail
 . /opt/hikari/aio/env
 

@@ -63,7 +63,7 @@ def source_roots() -> dict[str, Path]:
     from Shoko the name is Shoko's managed folder id; for a file added
     without Shoko (ADR-0014) it is whatever the operator named the folder.
     Unset or empty, the video mount under the name "library", as
-    settings.json has it. Path mapping is worker configuration, never part
+    compose.yaml gives it. Path mapping is worker configuration, never part
     of a job (research/01 "Path translation")."""
     out = {}
     for part in (os.environ.get("HIKARI_SOURCE_ROOTS") or "library=/source").split(","):

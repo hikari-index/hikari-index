@@ -28,8 +28,7 @@ as_user() { s6-setuidgid hikari "$@"; }
 # without this every setting, and every secret, would reach every
 # program, and a setting one program reads would work here by accident
 # and nowhere else. Each start script gives its program what
-# compose.yaml gives it (settings.json has those, and
-# tests/settings/check.py compares them) and what that program's own
-# image sets (copied from its Dockerfile's ENV by hand; nothing checks
-# that part but the side-by-side run).
+# compose.yaml's service gives it and what that program's own image
+# sets (its Dockerfile's ENV), both copied here by hand: change one
+# there and change it here.
 program() { exec s6-setuidgid hikari env -i HOME=/home/hikari "$@"; }

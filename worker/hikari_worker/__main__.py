@@ -18,7 +18,7 @@ Settings (environment):
                           on the container's clock (UTC unless TZ is set);
                           a stage already running finishes
     HIKARI_POLL_SECONDS   how often an idle worker asks for work, default
-                          30 (settings.json; unset and empty both mean it)
+                          30 (unset and empty both mean it)
     HIKARI_LIST_POLL_SECONDS
                           how often the listing thread looks for a folder
                           to list, default 5

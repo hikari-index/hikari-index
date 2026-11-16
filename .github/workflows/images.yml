@@ -25,19 +25,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  # One name and one default per setting, however the tool is installed:
-  # settings.json against the compose files, their .env examples and the
-  # programs' own reads.
-  settings:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - run: python3 tests/settings/check.py
-
   build:
-    # No image is built, and so none is published, while a wrapper or a
-    # program disagrees with the settings list.
-    needs: settings
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

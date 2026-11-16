@@ -1,9 +1,9 @@
 #!/command/with-contenv bash
 # The gallery, as the gallery image runs it. The environment below is
 # what compose.yaml's gallery service gives it (the settings, one per
-# line, in the form tests/settings/check.py reads) and what the gallery
-# image itself sets (gallery/Dockerfile's ENV, copied here by hand), with
-# this container's addresses and folders.
+# line, same names and defaults) and what the gallery image itself sets
+# (gallery/Dockerfile's ENV), with this container's addresses and
+# folders.
 set -euo pipefail
 . /opt/hikari/aio/env
 
