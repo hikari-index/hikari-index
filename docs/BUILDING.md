@@ -102,7 +102,8 @@ dump and restore and a release of its own.
 
 The all-in-one's database differs from the compose install's where one
 container must: it listens inside its container only and asks for the
-password even there, its files are in the config folder, and its locale
+password on network connections even there, its files are in the config
+folder, and its locale
 is spelled `en_US.UTF-8` where the image's is `en_US.utf8` (the same
 locale).
 

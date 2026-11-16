@@ -19,6 +19,14 @@ mv /config/.owner.new /config/.owner
 if [ -s /config/db/PG_VERSION ] && [ "$(cat /config/db/PG_VERSION)" != 18 ]; then
     fail "the database in /config/db was made by PostgreSQL $(cat /config/db/PG_VERSION) and this image runs 18; go back to the image that made it"
 fi
+# A container that was killed (a stop that ran out of time, a power cut)
+# leaves the database's lock file behind, naming a process number. In the
+# next container that number can belong to another program, and the
+# database then refuses to start for as long as that program lives.
+# Nothing of this container's is running yet, so a lock file found here is
+# always a leftover. (The database image never meets this: its database
+# is always process 1.)
+rm -f /config/db/postmaster.pid
 
 # The secrets: the same ones, made the same way, as the compose install's
 # first-run step (the gallery's own script), kept in /config/hikari.env.
@@ -82,10 +90,10 @@ fi
 # The analyze worker beside this container reads the token made here, so
 # a different token for the name analyze in HIKARI_WORKER_TOKENS cannot
 # work. The same pair is fine.
-case ",$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr -d '[:space:]')," in
-    *",analyze:$token,"*) ;;
-    *,analyze:*) fail "HIKARI_WORKER_TOKENS gives the name analyze a different token from the one this container made; remove that pair (the container's own is in worker-tokens/analyze in the config folder)" ;;
-esac
+others="$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -vxF "analyze:$token" || true)"
+if printf '%s\n' "$others" | grep -q '^analyze:'; then
+    fail "HIKARI_WORKER_TOKENS gives the name analyze a different token from the one this container made; remove that pair (the container's own is in worker-tokens/analyze in the config folder)"
+fi
 
 if [ -f /config/shoko-api-key ] && [ ! -L /config/shoko-api-key ]; then
     chmod 0400 /config/shoko-api-key

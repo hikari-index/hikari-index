@@ -20,7 +20,7 @@ done < /config/hikari.env
 # this container's own analyze pair from here, so the same pair pasted
 # into the list as well (a compose .env carries it) is dropped, not
 # doubled.
-other_tokens="$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr -d '[:space:]' | tr ',' '\n' | grep -vxF "analyze:${HIKARI_ANALYZE_TOKEN}" | grep . | paste -sd, - || true)"
+other_tokens="$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -vxF "analyze:${HIKARI_ANALYZE_TOKEN}" | grep . | paste -sd, - || true)"
 export DATABASE_URL="postgres://hikari:${HIKARI_DB_PASSWORD}@127.0.0.1:5432/hikari"
 export PGHOST=/run/postgresql PGUSER=hikari PGDATABASE=hikari
 PGBIN=/usr/lib/postgresql/18/bin
