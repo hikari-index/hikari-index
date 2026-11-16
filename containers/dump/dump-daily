@@ -10,8 +10,9 @@
 # PGDATABASE, and PGPASSWORD where one is needed). Files are named
 # hikari-YYYY-MM-DD.dump by the UTC date, in pg_dump's custom format
 # (restore with pg_restore). It looks hourly, so an install that was off
-# at the usual hour still gets its dump; a database with no tables yet
-# (a new install before the gallery's first start) is not dumped.
+# at the usual hour still gets its dump. A database with no tables yet
+# (a new install before the gallery's first start) is not dumped; it
+# looks again every minute until there are some.
 #
 # A dump on the same disk as the database guards against a bad update or
 # a mistake, not a dead disk: copy the folder somewhere else as well.
@@ -33,6 +34,7 @@ rm -f "$dir"/*.dump.part* 2>/dev/null
 mine="part.$(hostname).$$"
 
 while true; do
+    pause=3600
     dump="$dir/hikari-$(date -u +%F).dump"
     if [ ! -s "$dump" ]; then
         if ! tables="$(psql -tAc "select count(*) from information_schema.tables where table_schema = 'public'" 2>&1)"; then
@@ -50,8 +52,10 @@ while true; do
                 rm -f "$dump.$mine"
                 log "today's database dump failed (is the folder's disk full, and can user $(id -u) write to $dir?); trying again in an hour"
             fi
+        else
+            pause=60
         fi
     fi
-    sleep 3600 &
+    sleep "$pause" &
     wait $!
 done
