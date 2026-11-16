@@ -64,7 +64,8 @@ chmod 0600 "$secrets"
 # edited by hand with a line lost would otherwise stop the programs one
 # by one with nothing said.
 for key in HIKARI_DB_PASSWORD HIKARI_ADMIN_USER HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
-    [ "$(grep -c "^$key=." "$secrets")" = 1 ] || fail "hikari.env in the config folder has no $key line (or more than one); put back the file this install was made with"
+    [ "$(grep -c "^$key=" "$secrets")" = 1 ] && grep -q "^$key=." "$secrets" \
+        || fail "hikari.env in the config folder must have exactly one $key line, with a value; put back the file this install was made with"
 done
 
 # The analyze worker's token, where an analyze container on this host can

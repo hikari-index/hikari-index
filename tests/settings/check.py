@@ -31,10 +31,12 @@ parser) and checks:
       worker's scripts hand each setting on under the name the program
       reads, with the list's default.
   worker/, providers/, gallery/src, gallery/scripts
-    - every environment name read is in the list, as that program's
-      setting or as wiring; every setting is read by the program the
-      list names; a default written beside a read is the list's, and a
-      Python program states the default of each setting that has one.
+    - every environment name read in one of the forms this file knows
+      (os.environ, os.getenv, env.NAME, env["NAME"]) is in the list, as
+      that program's setting or as wiring; every setting is read by the
+      program the list names; a default written beside a read is the
+      list's, and a Python program states the default of each setting
+      that has one. A read written another way is not seen.
 
 Not checked: whether a compose file is otherwise sound (a service that
 lost its environment block), values set in a Dockerfile, compose.db.yaml
@@ -195,25 +197,46 @@ for path in sorted((ROOT / "containers/all-in-one/scripts").iterdir()):
 for name in sorted(set(aio) - taken):
     problems.append(f"settings.json lists {name} for the all-in-one, and none of its start scripts takes it")
 
+# What the container makes itself is handed on as its own variable, whole;
+# the worker tokens are the one made setting with a second half (note_on).
+MADE = {"HIKARI_WORKER_TOKENS": '"analyze:${HIKARI_ANALYZE_TOKEN}${HIKARI_WORKER_TOKENS:+,${HIKARI_WORKER_TOKENS}}"'}
+
+
+def program_call(where: str) -> dict[str, str]:
+    """The NAME=value words of a start script's one program call: the
+    lines after the line that calls it, each ending in a backslash, up
+    to the command."""
+    lines = text(where).splitlines()
+    if lines.count("program \\") != 1:
+        problems.append(f"{where} must call `program \\` exactly once, on a line of its own")
+        return {}
+    given: dict[str, str] = {}
+    for raw in lines[lines.index("program \\") + 1:]:
+        match = ASSIGN.match(raw)
+        if match is None or not raw.endswith("\\"):
+            break  # the command itself, or a line that does not continue the call
+        given[match.group(1)] = match.group(2)
+    return given
+
+
 for program in ("gallery", "worker"):
     where = f"containers/all-in-one/scripts/{program}"
-    given = {m.group(1): m.group(2) for m in map(ASSIGN.match, text(where).splitlines()) if m}
+    given = program_call(where)
     for name, s in sorted(aio.items()):
         target = s["reads"].get(program)
         if target is None:
             continue
-        value = given.get(target)
-        if value is None:
-            problems.append(f"{where} does not hand the {program} {target}, which is how it reads {name}")
-        elif s["group"] == "made":
-            if f"${name}" not in value and f"${{{name}" not in value:
-                problems.append(f"{where} hands the {program} {target}={value}, which is not made from {name}")
+        if s["group"] == "made":
+            wanted = MADE.get(name, f'"${name}"')
         else:
             default = s.get("default_on", {}).get("all-in-one", s["default"])
             other = s.get("also_on", {}).get("all-in-one")
             wanted = f'"${{{name}:-${{{other}:-{default}}}}}"' if other else f'"${{{name}:-{default}}}"'
-            if value != wanted:
-                problems.append(f"{where} hands the {program} {target}={value}; settings.json makes that {wanted}")
+        value = given.get(target)
+        if value is None:
+            problems.append(f"{where} does not hand the {program} {target} inside its `program` call, which is how it reads {name}")
+        elif value != wanted:
+            problems.append(f"{where} hands the {program} {target}={value}; settings.json makes that {wanted}")
 
 # --- the programs -----------------------------------------------------------
 # (program, the name it reads) -> the setting

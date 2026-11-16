@@ -18,7 +18,7 @@ if [ "$(as_user "$PGBIN/psql" --dbname=postgres -tAc "select 1 from pg_database 
 fi
 
 # A dump that was cut short (a stop, a full disk) is not a dump.
-as_user sh -c 'rm -f /config/backups/*.dump.part'
+as_user sh -c 'rm -f /config/backups/before-*.dump.part'
 
 # "Which version last ran here" is a file; when it is missing or empty but
 # the database already holds tables, assume the worst and dump anyway.

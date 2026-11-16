@@ -49,7 +49,7 @@
     { "name": "HIKARI_WORKER_HOURS", "group": "optional", "default": "", "routes": ["compose", "all-in-one"], "reads": { "worker": "HIKARI_WORKER_HOURS" },
       "what": "Start the worker's stages only between these hours, for example 01-07, on the clock HIKARI_TZ names. Empty means any time." },
     { "name": "HIKARI_TZ", "group": "optional", "default": "", "routes": ["compose", "second-machine", "all-in-one"], "reads": { "worker": "TZ", "analyze": "TZ", "gallery": "TZ" },
-      "also_on": { "all-in-one": "TZ" }, "why_also": "A host such as unRAID sets TZ on every container to its own time zone; the all-in-one uses that when HIKARI_TZ is not set, so its hours are the server's without anything typed.",
+      "also_on": { "all-in-one": "TZ" }, "why_also": "A host such as unRAID sets TZ on every container to its own time zone; the all-in-one uses that when HIKARI_TZ is unset or empty (a blank field means the default, as everywhere), so its hours are the server's without anything typed. To have UTC on such a host, set HIKARI_TZ to UTC.",
       "what": "The time zone HIKARI_WORKER_HOURS and the times in the logs are in, for example America/New_York. Empty means UTC." },
     { "name": "HIKARI_POLL_SECONDS", "group": "optional", "default": "30", "routes": ["compose", "second-machine", "all-in-one"], "reads": { "worker": "HIKARI_POLL_SECONDS", "analyze": "HIKARI_POLL_SECONDS" },
       "what": "How often an idle worker asks for work, in seconds." },
