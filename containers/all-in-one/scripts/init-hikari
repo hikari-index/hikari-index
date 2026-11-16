@@ -38,6 +38,15 @@ for mount in /config /data /images; do
 done
 mountpoint -q /source || fail "nothing is mounted at /source (your video, read-only)"
 
+# A database folder this container did not make (the separate database
+# container's, for one) cannot be used here: it is laid out differently.
+# Stop before anything in the config folder is touched. Further down its
+# files are handed to this container's user, which would lock the install
+# that made that database out of it.
+if [ -d /config/db ] && [ ! -s /config/db/PG_VERSION ] && [ -n "$(ls -A /config/db 2>/dev/null)" ]; then
+    fail "db in the config folder has files in it but is not a database this container made. Nothing was changed. Give this container an empty config folder; to bring a database over from another install, restore a dump of it into this one"
+fi
+
 groupmod --non-unique --gid "$PGID" hikari
 usermod --non-unique --uid "$PUID" hikari
 install --directory --owner hikari --group hikari /run/postgresql
