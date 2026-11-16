@@ -64,6 +64,8 @@ services:
     # /var/lib/postgresql. This line is the database version: whatever
     # else in this repository runs a database names this same image at
     # this same digest (docs/BUILDING.md, "The database version").
+    # The all-in-one image installs the versions this image holds, and
+    # its build stops if the two name different images.
     image: &database-image pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     restart: unless-stopped
     environment:

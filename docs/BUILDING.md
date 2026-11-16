@@ -16,6 +16,7 @@ worker and gallery builds refuse to run without one).
 | analyze worker, NVIDIA GPU | `containers/rtx-worker/Dockerfile` | the inference base | 18 GB |
 | analyze worker, CPU | `containers/cpu-worker/Dockerfile` | `python:3.11-slim-bookworm`, weights fetched at the inference base's pins | 6 GB |
 | text encoder (mood search) | `containers/text-encoder/Dockerfile` | `python:3.11-slim-bookworm` | 3.9 GB |
+| all-in-one (gallery, database, worker, text encoder) | `containers/all-in-one/Dockerfile` | the worker image, with the gallery's and text encoder's files copied in | 6.1 GB |
 
 ```bash
 docker build --build-arg HIKARI_GALLERY_VERSION=<tag> -t hikari-index/gallery:<tag> gallery
@@ -36,12 +37,46 @@ The CPU worker stands alone:
 docker build -f containers/cpu-worker/Dockerfile --build-arg HIKARI_WORKER_VERSION=<tag> -t hikari-index/cpu-worker:<tag> .
 ```
 
+The all-in-one image is put together from the gallery, worker and text
+encoder images rather than built again: it starts from the worker image
+and copies in the gallery's built app and Node, and the text encoder's
+Python, packages, model and code. The files are theirs; the operating
+system under the gallery and the text encoder is the worker image's, so
+that they give the same output is something only a run shows: put one
+film through this image and through the compose install and compare the
+frames and web images. Do it again when a base image moves; a build that
+succeeds does not show it.
+
+It adds PostgreSQL with pgvector at the versions the database image
+holds (next section) and s6-overlay (the exact release by sha256) to
+start and stop the parts in order. One command builds the three and then
+the image:
+
+```bash
+VERSION=<version> docker buildx bake -f docker-bake.hcl all-in-one
+```
+
+Or from images you already have, as named build contexts (the header of
+`containers/all-in-one/Dockerfile` has the full command).
+
 ## The database version
 
 What this repository starts a database with is one image at one digest:
 the `db` service in `compose.yaml`, `pgvector/pgvector:pg18` (PostgreSQL
 18.7 and pgvector 0.8.7 since 2026-11). `compose.db.yaml`, the
 development database, names the same image at the same digest.
+
+The all-in-one image has no database image inside it: its Dockerfile
+names the same image (`DATABASE_IMAGE`), reads the PostgreSQL package
+version and the pgvector version out of it, and installs those from
+packages. PostgreSQL comes the way its project documents (the apt
+repository set up by `apt.postgresql.org.sh`; the server, JIT and client
+packages are the ones the image itself is built from) and pgvector by
+its README's APT method, so pgvector there is the same version from a
+different build. The build stops unless both compose files name the
+very same image, digest included, and when the package repository no
+longer carries those versions. An all-in-one install gets a new pin with
+the image, not with `git pull`.
 
 An install gets a new pin when its copy of `compose.yaml` does, which is
 the `git pull` in the docs' update steps; changing `HIKARI_VERSION` alone
@@ -64,6 +99,13 @@ that writes (not the read-only build) and a database login that owns the
 extension, which the login that created it does; when it cannot, the
 gallery says why in its log and carries on. A move to PostgreSQL 19 is a
 dump and restore and a release of its own.
+
+The all-in-one's database differs from the compose install's where one
+container must: it listens inside its container only and asks for the
+password on network connections even there, its files are in the config
+folder, and its locale
+is spelled `en_US.UTF-8` where the image's is `en_US.utf8` (the same
+locale).
 
 The inference base and the CPU worker both download the models from
 Hugging Face at the same pinned revisions and check the sha256 of every

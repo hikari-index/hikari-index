@@ -24,7 +24,10 @@ Settings (environment):
                           avoids a name lookup on every connection)
     HIKARI_WORKER_TOKEN   this worker's token (its entry in the gallery's
                           HIKARI_WORKER_TOKENS)
-    HIKARI_WORKER_ID      default "analyze"
+    HIKARI_WORKER_TOKEN_FILE  a file holding that token instead (the
+                          all-in-one image writes one for a worker on
+                          the same host)
+    HIKARI_WORKER_ID     default "analyze"
     HIKARI_SHARE          where the data folder is mounted, default /share
     HIKARI_DEVICE         default "cuda"
     HIKARI_POLL_SECONDS   how often an idle worker asks for work, default
@@ -74,7 +77,17 @@ class Refused(RuntimeError):
 class Api:
     def __init__(self):
         self.base = os.environ["HIKARI_GALLERY_URL"].rstrip("/")
-        self.token = os.environ["HIKARI_WORKER_TOKEN"]
+        token_file = os.environ.get("HIKARI_WORKER_TOKEN_FILE")
+        if token_file and not os.environ.get("HIKARI_WORKER_TOKEN"):
+            try:
+                self.token = Path(token_file).read_text(encoding="utf-8").strip()
+            except OSError as e:
+                raise SystemExit(f"cannot read the worker token file {token_file}: {e.strerror}; "
+                                 "is the folder that holds it mounted, and readable by this container's user?")
+            if not self.token:
+                raise SystemExit(f"the worker token file {token_file} is empty")
+        else:
+            self.token = os.environ["HIKARI_WORKER_TOKEN"]
         self.worker = os.environ.get("HIKARI_WORKER_ID", "analyze")
 
     def post(self, path: str, body: bytes, content_type: str, timeout: float = 60):

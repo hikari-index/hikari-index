@@ -1,0 +1,15 @@
+#!/command/with-contenv bash
+# The text encoder for mood search, as the text-encoder image runs it:
+# that image's own environment and nothing else, and no setting of yours
+# (compose.yaml gives it none). It listens inside the container only. It
+# reads nothing from the config folder, so it does not load the settings
+# file the other start scripts do.
+set -euo pipefail
+
+cd /
+exec s6-setuidgid hikari env -i HOME=/home/hikari \
+    PATH=/opt/venv/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LANG=C.UTF-8 PYTHONPATH=/opt/hikari/inference \
+    HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 OMP_NUM_THREADS=4 \
+    python -m inference.encode_server \
+    --model-dir /opt/hikari/models/siglip2-text --device cpu --host 127.0.0.1 --port 5187

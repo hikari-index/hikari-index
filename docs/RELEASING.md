@@ -61,9 +61,11 @@ One package per image on the GitHub Container Registry:
 | worker that reads your video | `ghcr.io/hikari-index/worker` |
 | analyze worker, CPU | `ghcr.io/hikari-index/cpu-worker` |
 | text encoder | `ghcr.io/hikari-index/text-encoder` |
+| all-in-one: gallery, database, worker that reads your video and text encoder in one container | `ghcr.io/hikari-index/hikari-index` |
 
 The gallery, the read-only gallery and the text encoder are published for
-`linux/amd64` and `linux/arm64`; the two workers for `linux/amd64` only.
+`linux/amd64` and `linux/arm64`; the two workers and the all-in-one image
+for `linux/amd64` only.
 The GPU analyze worker is not published (its base image is too large to
 build on GitHub's runners); build it yourself, see
 [BUILDING.md](BUILDING.md).
@@ -97,6 +99,10 @@ once pushed. `latest` and `dev` are meant to move.
    their own section).
 4. Edit the draft: the first line is **Action needed:** with what to do,
    or "None". Then two or three plain lines on what changed. Publish.
+
+A package published for the first time starts private on GitHub. Make it
+public on the package's own settings page before publishing the release,
+and check that it pulls signed out.
 
 The Releases page lists releases only; every build is on the packages'
 tag lists.

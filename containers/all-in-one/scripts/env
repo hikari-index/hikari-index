@@ -1,0 +1,39 @@
+# Sourced by the programs' start scripts: the settings made on first start
+# plus the fixed places things live in this image.
+#
+# /config/hikari.env is read as data, never run: these scripts are root
+# until they hand over to the program, and the file sits in a folder the
+# programs' user can write.
+#
+# The admin name is the one setting both the file and the container can
+# hold. The container's wins when it is set, as editing the line in .env
+# does on a compose install.
+given_admin_user="${HIKARI_ADMIN_USER:-}"
+while IFS= read -r line || [ -n "$line" ]; do
+    case "${line%%=*}" in
+        HIKARI_DB_PASSWORD|HIKARI_ADMIN_USER|HIKARI_ADMIN_PASSWORD_HASH|HIKARI_SESSION_SECRET|HIKARI_ANALYZE_TOKEN)
+            export "${line%%=*}=${line#*=}" ;;
+    esac
+done < /config/hikari.env
+[ -z "$given_admin_user" ] || export HIKARI_ADMIN_USER="$given_admin_user"
+# HIKARI_WORKER_TOKENS is the setting every install has. The gallery gets
+# this container's own analyze pair from here, so the same pair pasted
+# into the list as well (a compose .env carries it) is dropped, not
+# doubled.
+other_tokens="$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr ',' '\n' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -vxF "analyze:${HIKARI_ANALYZE_TOKEN}" | grep . | paste -sd, - || true)"
+export DATABASE_URL="postgres://hikari:${HIKARI_DB_PASSWORD}@127.0.0.1:5432/hikari"
+export PGHOST=/run/postgresql PGUSER=hikari PGDATABASE=hikari
+PGBIN=/usr/lib/postgresql/18/bin
+log() { echo "[hikari] $*"; }
+# Anything that writes under /config, /data or /images does it as the
+# programs' user, never as root.
+as_user() { s6-setuidgid hikari "$@"; }
+# Hands over to a program, as the programs' user, with exactly the
+# environment given and nothing else. One container has one environment;
+# without this every setting, and every secret, would reach every
+# program, and a setting one program reads would work here by accident
+# and nowhere else. Each start script gives its program what
+# compose.yaml's service gives it and what that program's own image
+# sets (its Dockerfile's ENV), both copied here by hand: change one
+# there and change it here.
+program() { exec s6-setuidgid hikari env -i HOME=/home/hikari "$@"; }

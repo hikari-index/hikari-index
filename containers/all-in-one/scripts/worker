@@ -1,0 +1,27 @@
+#!/command/with-contenv bash
+# The worker that reads your video, as the worker image runs it. The
+# environment below is what compose.yaml's worker service gives it (the
+# settings, one per line, same names and defaults) and what the worker
+# image itself sets (containers/worker/Dockerfile's ENV), with this
+# container's folders. It waits for the gallery to answer first: by then
+# the tables are up to date.
+set -euo pipefail
+. /opt/hikari/aio/env
+
+until node -e "fetch('http://127.0.0.1:3000/series').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"; do
+    sleep 2
+done
+
+cd /app
+program \
+    PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin \
+    LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONPATH=/app PYTHONDONTWRITEBYTECODE=1 \
+    HIKARI_WORKER_VERSION="$HIKARI_WORKER_VERSION" \
+    DATABASE_URL="$DATABASE_URL" \
+    HIKARI_SOURCE_ROOTS="${HIKARI_SOURCE_ROOTS:-library=/source}" \
+    HIKARI_POLL_SECONDS="${HIKARI_POLL_SECONDS:-30}" \
+    HIKARI_WORKER_HOURS="${HIKARI_WORKER_HOURS:-}" \
+    TZ="${HIKARI_TZ:-${TZ:-}}" \
+    HIKARI_OUTPUT=/data \
+    HIKARI_IMAGES=/images \
+    python -m hikari_worker

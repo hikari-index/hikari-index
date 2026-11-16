@@ -120,8 +120,99 @@ jobs:
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,scope=${{ matrix.image }},mode=min
 
-  release:
+  # The all-in-one image (containers/all-in-one): the gallery, worker and
+  # text encoder images' files, put together with the database. amd64
+  # only, as the worker is. After the job above, which makes those images.
+  all-in-one:
     needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          docker image prune --all --force
+          df -h /
+
+      - uses: actions/checkout@v5
+
+      - name: Version
+        id: version
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "value=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=dev-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        if: github.event_name != 'pull_request'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/hikari-index/hikari-index
+          flavor: latest=false
+          tags: |
+            type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+          labels: |
+            org.opencontainers.image.title=hikari-index all-in-one
+            org.opencontainers.image.licenses=AGPL-3.0-or-later
+
+      # Where the gallery, worker and text encoder inside it come from.
+      # A published all-in-one must hold exactly the files of the images
+      # published beside it, so on main and on a release it is put
+      # together from the images the job above just pushed (by their
+      # commit or version tag, which never move), never from a second
+      # build of them. A pull request pushes nothing, so there the three
+      # are built again from the checkout, which only proves the image
+      # still builds.
+      - name: Parts
+        id: parts
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            tag="${GITHUB_REF#refs/tags/v}"
+          elif [[ "$GITHUB_EVENT_NAME" != pull_request && "$GITHUB_REF" == refs/heads/main ]]; then
+            tag="sha-${GITHUB_SHA::7}"
+          else
+            tag=""
+          fi
+          {
+            echo 'set<<END_OF_SET'
+            for part in gallery worker text-encoder; do
+              if [[ -n "$tag" ]]; then
+                echo "all-in-one.contexts.$part=docker-image://ghcr.io/hikari-index/$part:$tag"
+              else
+                echo "$part.cache-from=type=gha,scope=$part"
+              fi
+            done
+            echo 'all-in-one.cache-from=type=gha,scope=all-in-one'
+            echo 'all-in-one.cache-to=type=gha,scope=all-in-one,mode=min'
+            echo 'END_OF_SET'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/bake-action@v6
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        with:
+          source: .
+          files: |
+            ./docker-bake.hcl
+            ${{ steps.meta.outputs.bake-file }}
+          targets: all-in-one
+          push: ${{ github.event_name != 'pull_request' }}
+          set: ${{ steps.parts.outputs.set }}
+
+  release:
+    needs: [build, all-in-one]
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:

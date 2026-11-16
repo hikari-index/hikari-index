@@ -1,0 +1,13 @@
+#!/command/with-contenv bash
+# One database dump a day into /config/backups, fourteen kept: the script
+# every way of installing runs (containers/dump/dump-daily), here as the
+# programs' user through the database's local socket. A copy on the same
+# disk guards against a bad update or a mistake, not a dead disk: copy
+# the config folder somewhere else as well.
+set -euo pipefail
+. /opt/hikari/aio/env
+
+program \
+    PATH="$PGBIN:/usr/sbin:/usr/bin:/sbin:/bin" \
+    PGHOST=/run/postgresql PGUSER=hikari PGDATABASE=hikari \
+    /opt/hikari/dump-daily /config/backups

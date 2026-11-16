@@ -1,0 +1,67 @@
+#!/command/with-contenv bash
+# First thing on every start: take the user id asked for and make the
+# folders that user's. Everything written inside them after that is
+# written as that user (init-config), never as root: root following a
+# link planted in a folder someone else owns is how a small break-in
+# becomes a large one. A problem here stops the container with a line
+# that says what to change.
+set -euo pipefail
+
+log() { echo "[hikari] $*"; }
+fail() { echo "[hikari] cannot start: $*" >&2; exit 1; }
+
+PUID="${PUID:-10001}"
+PGID="${PGID:-10001}"
+case "$PUID$PGID" in *[!0-9]*) fail "PUID and PGID must be numbers (got '$PUID' and '$PGID')" ;; esac
+[ "$PUID" -ne 0 ] || fail "PUID is 0; the database does not run as root. Use an ordinary user id (unRAID's is 99)"
+
+origin="${HIKARI_ORIGIN:-}"
+case "$origin" in
+    http://?*|https://?*) ;;
+    *) fail "set HIKARI_ORIGIN to the address you open the gallery at, for example http://192.0.2.10:5183 (the sign-in form refuses any other)" ;;
+esac
+
+# What the compose install's first-run step makes, this container makes
+# itself and keeps in hikari.env in the config folder. One of them given
+# on the container as well is not used, and the log says so. The database
+# password is the exception: the database is made with it, so a different
+# one could only lock the programs out, and is refused.
+for made in HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
+    [ -z "${!made:-}" ] || log "$made is set on the container and is not used: this container makes its own and keeps it in hikari.env in the config folder"
+done
+if [ -n "${HIKARI_DB_PASSWORD:-}" ] && [ "$(sed -n 's/^HIKARI_DB_PASSWORD=//p' /config/hikari.env 2>/dev/null)" != "$HIKARI_DB_PASSWORD" ]; then
+    fail "HIKARI_DB_PASSWORD on the container is not the one this container made its database with (it keeps that in hikari.env in the config folder). Remove the variable"
+fi
+
+for mount in /config /data /images; do
+    mountpoint -q "$mount" || fail "nothing is mounted at $mount; without it everything there is lost when the container is updated"
+done
+mountpoint -q /source || fail "nothing is mounted at /source (your video, read-only)"
+
+groupmod --non-unique --gid "$PGID" hikari
+usermod --non-unique --uid "$PUID" hikari
+install --directory --owner hikari --group hikari /run/postgresql
+
+# The three folders themselves, then everything in them once, and again
+# only when PUID or PGID changes: walking a large library on every start
+# would wake the disks and hold the start up for nothing. Links are
+# handed over as links, never followed, and each file is named from
+# inside its own folder (-execdir), so a folder swapped for a link while
+# the walk runs cannot send the chown somewhere else.
+chown hikari:hikari /config /data /images
+if [ "$(cat /config/.owner 2>/dev/null || true)" != "$PUID:$PGID" ]; then
+    log "handing the config, data and images folders to user $PUID:$PGID (once; a large library takes a while)"
+    for dir in /config /data /images; do
+        PATH=/usr/sbin:/usr/bin:/sbin:/bin find "$dir" \( ! -user "$PUID" -o ! -group "$PGID" \) \
+            -execdir /bin/chown --no-dereference hikari:hikari {} +
+    done
+fi
+# A Shoko key put in the folder later arrives owned by whoever copied it;
+# the gallery reads it as its own user.
+if [ -f /config/shoko-api-key ] && [ ! -L /config/shoko-api-key ]; then
+    chown --no-dereference hikari:hikari /config/shoko-api-key
+fi
+
+s6-setuidgid hikari /opt/hikari/aio/init-config
+
+log "$HIKARI_GALLERY_VERSION and $HIKARI_WORKER_VERSION starting as user $PUID:$PGID; gallery at $origin"
