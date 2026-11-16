@@ -74,11 +74,17 @@ build on GitHub's runners); build it yourself, see
 |---|---|---|
 | `latest` | yes | a release |
 | `1.5.1` (the version) | never | a release |
-| `dev` | yes | every merge to `main` |
-| `sha-<short commit>` | never | every merge to `main` |
+| `dev` | yes | a merge to `main`, except one that touches only docs and templates (below) |
+| `sha-<short commit>` | never | the same merges |
 
 A version tag and a `sha-` tag are never moved, overwritten or deleted
 once pushed. `latest` and `dev` are meant to move.
+
+A merge that touches only `docs/`, the markdown at the repository root
+or the unRAID templates builds nothing: `dev` stays where it was and no
+`sha-` tag is made for that commit. Any other merge builds every image,
+changed or not, because each carries the commit's version. A release
+always builds.
 
 ## Making a release
 
