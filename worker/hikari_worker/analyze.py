@@ -27,7 +27,8 @@ Settings (environment):
     HIKARI_WORKER_ID      default "analyze"
     HIKARI_SHARE          where the data folder is mounted, default /share
     HIKARI_DEVICE         default "cuda"
-    HIKARI_POLL_SECONDS   default 60
+    HIKARI_POLL_SECONDS   how often an idle worker asks for work, default
+                          30 (settings.json; unset and empty both mean it)
     HIKARI_WORKER_STANDBY "1" = take a stage only while no regular analyze
                           worker has checked in for 10 minutes (the
                           always-on CPU machine standing in for a GPU one)
@@ -288,7 +289,7 @@ def pack(out: Path) -> list[dict]:
 
 def main() -> int:
     api = Api()
-    poll = float(os.environ.get("HIKARI_POLL_SECONDS", "60"))
+    poll = float(os.environ.get("HIKARI_POLL_SECONDS") or "30")
     stopping = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopping.set())
     signal.signal(signal.SIGINT, lambda *_: stopping.set())

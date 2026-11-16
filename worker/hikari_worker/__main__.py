@@ -11,12 +11,14 @@ Settings (environment):
                           e.g. "4=/source" (for files onboarded from Shoko
                           the name is Shoko's managed folder id) or
                           "films=/source/films" (any name, for files added
-                          without Shoko; the gallery offers the names)
+                          without Shoko; the gallery offers the names);
+                          default "library=/source"
     HIKARI_WORKER_ID      default "source"
     HIKARI_WORKER_HOURS   optional window to START stages in, e.g. "01-07",
                           on the container's clock (UTC unless TZ is set);
                           a stage already running finishes
-    HIKARI_POLL_SECONDS   default 60
+    HIKARI_POLL_SECONDS   how often an idle worker asks for work, default
+                          30 (settings.json; unset and empty both mean it)
     HIKARI_LIST_POLL_SECONDS
                           how often the listing thread looks for a folder
                           to list, default 5
@@ -104,7 +106,7 @@ class Lister(threading.Thread):
 
 def main() -> int:
     worker_id = os.environ.get("HIKARI_WORKER_ID", "source")
-    poll = float(os.environ.get("HIKARI_POLL_SECONDS", "60"))
+    poll = float(os.environ.get("HIKARI_POLL_SECONDS") or "30")
     window = os.environ.get("HIKARI_WORKER_HOURS") or None
     stopping = threading.Event()
     signal.signal(signal.SIGTERM, lambda *_: stopping.set())
