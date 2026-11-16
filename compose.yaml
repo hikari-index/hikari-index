@@ -80,9 +80,9 @@ services:
       timeout: 3s
       retries: 20
 
-  # One dump of the database a day, fourteen kept, by the script every way
-  # of installing uses (containers/dump/dump-daily, read from this
-  # checkout). It runs from the database's own image, so its pg_dump is
+  # One dump of the database a day, fourteen kept
+  # (containers/dump/dump-daily, read from this checkout). It runs from
+  # the database's own image, so its pg_dump is
   # the server's version. On the same disk as the database it guards
   # against a bad update or a mistake, not a dead disk
   # (https://docs.hikari-index.moe/run/backups/).
