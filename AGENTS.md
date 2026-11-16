@@ -32,6 +32,7 @@ fix, a rule change or a migration the gallery applies itself does not).
 | `tests/` | Synthetic-fixture tests for the providers. |
 | `compose.yaml`, `.env.example` | The single-machine install: every service, built from source, one settings file. |
 | `settings.json` | The settings a person installing can set, with the default each has: a reference to read, kept by hand. |
+| `templates/`, `ca_profile.xml` | The unRAID Community Apps templates for the all-in-one image and its analyze worker, and the profile Community Apps reads from the repository root. A template is one more wrapper: each field is a setting, under the name and with the default `settings.json` gives. |
 | `compose.rtx-worker.yaml`, `compose.cpu-worker.yaml`, `compose.db.yaml` | An analyze worker on a second machine (GPU or CPU), and a database for gallery development. Each has its `.env.*.example`. |
 
 ## Build, run, test

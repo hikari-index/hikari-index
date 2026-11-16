@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>hikari-index</Name>
+  <Repository>ghcr.io/hikari-index/hikari-index:latest</Repository>
+  <Registry>https://github.com/hikari-index/hikari-index/pkgs/container/hikari-index</Registry>
+  <Network>bridge</Network>
+  <Shell>bash</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/hikari-index/hikari-index/issues</Support>
+  <Project>https://github.com/hikari-index/hikari-index</Project>
+  <ReadMe>https://docs.hikari-index.moe/</ReadMe>
+  <Overview>A local-first reference library of anime stills. Pick an episode or a film and Hikari Index pulls a small set of representative frames from it, with palette, composition, tags and similarity search, and serves them from a gallery on your own network. Your video is read-only and never leaves the machine.&#xD;
+&#xD;
+This is the all-in-one container: the gallery, its database, the worker that reads your video and the text encoder for mood search. It makes its own passwords on the first start; the admin password is printed in this container's log, which is the only place it is kept, so write it down then.&#xD;
+&#xD;
+It does not describe the frames or pick the stills. That is the analyze worker: install "hikari-index-analyze" as well (CPU, on this server), or run a GPU worker on another machine (see the docs). Until one is running, added work waits after its first step.</Overview>
+  <Category>MediaApp:Photos MediaApp:Video Tools:</Category>
+  <WebUI>http://[IP]:[PORT:3000]/</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/hikari-index/hikari-index/main/templates/hikari-index.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/hikari-index/hikari-index/main/gallery/static/icon.png</Icon>
+  <License>AGPL-3.0-or-later</License>
+  <ExtraSearchTerms>anime stills screenshots frames cinematography gallery</ExtraSearchTerms>
+  <ExtraParams>--stop-timeout 120</ExtraParams>
+  <Requires>The first start prints the admin password in the log (Docker tab, the container's icon, Logs); the log goes when the container is updated, so write it down. Then install hikari-index-analyze, or connect an analyze worker on another machine.</Requires>
+  <Config Name="Web port" Target="3000" Default="5183" Mode="tcp" Description="The port the gallery is opened on." Type="Port" Display="always" Required="true" Mask="false">5183</Config>
+  <Config Name="Gallery address" Target="HIKARI_ORIGIN" Default="" Mode="" Description="The address you will open the gallery at, exactly as in the browser's address bar, for example http://192.168.1.10:5183 or http://tower.local:5183. The admin sign-in refuses a form sent from any other address." Type="Variable" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Video" Target="/source" Default="" Mode="ro" Description="The folder your video is in. Read-only: nothing here is ever changed." Type="Path" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Data" Target="/data" Default="" Mode="rw" Description="Where the original frames and run records are kept. The largest folder: about 1 GB an episode until you finish reviewing it, about 150 MB after. A share on the array is fine." Type="Path" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Web images" Target="/images" Default="/mnt/user/appdata/hikari-index-images" Mode="rw" Description="The images the gallery shows, about 15 MB an episode. They are read on every page view, so keep them on a pool that does not spin down. They can be made again from Data." Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/hikari-index-images</Config>
+  <Config Name="Config" Target="/config" Default="/mnt/user/appdata/hikari-index" Mode="rw" Description="The database, the passwords the container makes, and a daily database dump (backups/, fourteen kept). Back this folder up." Type="Path" Display="advanced" Required="true" Mask="false">/mnt/user/appdata/hikari-index</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="The user the programs run as and that owns the files they write. If you change PUID or PGID, change --user in hikari-index-analyze's Extra Parameters to the same pair, or it cannot read its token." Type="Variable" Display="advanced" Required="false" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="That user's group." Type="Variable" Display="advanced" Required="false" Mask="false">100</Config>
+  <Config Name="Shoko address" Target="HIKARI_SHOKO_BASE_URL" Default="" Mode="" Description="Optional. Your Shoko server, for example http://192.168.1.10:8111, to pick episodes from its catalog (read-only). Put a non-admin API key, alone, in a file named shoko-api-key in the Config folder. With Shoko, also set Source folders." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Source folders" Target="HIKARI_SOURCE_ROOTS" Default="library=/source" Mode="" Description="A name for the Video folder. With Shoko the name is Shoko's managed folder id, for example 4=/source." Type="Variable" Display="advanced" Required="false" Mask="false">library=/source</Config>
+  <Config Name="Working hours" Target="HIKARI_WORKER_HOURS" Default="" Mode="" Description="Optional. Only start reading video and making images between these hours, for example 01-07, on the server's clock. Empty runs whenever there is work." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Time zone" Target="HIKARI_TZ" Default="" Mode="" Description="Optional. The time zone Working hours and the times in the log are in, for example America/New_York. Empty is this server's own time zone." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Check for work every" Target="HIKARI_POLL_SECONDS" Default="30" Mode="" Description="How often the worker that reads your video asks for work when it has none, in seconds. The analyze container has its own field for this." Type="Variable" Display="advanced" Required="false" Mask="false">30</Config>
+  <Config Name="More analyze workers" Target="HIKARI_WORKER_TOKENS" Default="" Mode="" Description="Optional. Tokens for analyze workers on other machines, as name:token,name:token. The analyze container on this server needs nothing here." Type="Variable" Display="advanced" Required="false" Mask="true"></Config>
+  <Config Name="Footer notice" Target="HIKARI_NOTICE" Default="" Mode="" Description="Optional. A line of your own text at the foot of every page, for example credits for openly licensed video. Web addresses in it become links." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+  <Config Name="Admin link" Target="HIKARI_ADMIN_LINK" Default="1" Mode="" Description="0 hides the Admin link in the page header. The link only: /admin still answers." Type="Variable" Display="advanced" Required="false" Mask="false">1</Config>
+  <Config Name="Admin name" Target="HIKARI_ADMIN_USER" Default="" Mode="" Description="Optional. The admin sign-in name. Empty is admin." Type="Variable" Display="advanced" Required="false" Mask="false"></Config>
+</Container>

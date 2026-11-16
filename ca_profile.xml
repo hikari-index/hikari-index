@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>Templates for Hikari Index, a local-first reference library of anime stills: it turns an episode or film you pick into a small, searchable set of representative frames with palette, composition, tag and similarity data, served from a gallery on your own network. Open source (AGPL-3.0-or-later); the templates are maintained by the project.</Profile>
+  <WebPage>https://docs.hikari-index.moe/</WebPage>
+  <Forum>https://github.com/hikari-index/hikari-index/issues</Forum>
+  <Icon>https://raw.githubusercontent.com/hikari-index/hikari-index/main/gallery/static/icon.png</Icon>
+</CommunityApplications>
