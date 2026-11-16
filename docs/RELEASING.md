@@ -100,5 +100,9 @@ once pushed. `latest` and `dev` are meant to move.
 4. Edit the draft: the first line is **Action needed:** with what to do,
    or "None". Then two or three plain lines on what changed. Publish.
 
+A package published for the first time starts private on GitHub. Make it
+public on the package's own settings page before publishing the release,
+and check that it pulls signed out.
+
 The Releases page lists releases only; every build is on the packages'
 tag lists.

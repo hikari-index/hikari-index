@@ -22,25 +22,16 @@ case "$origin" in
 esac
 
 # What the compose install's first-run step makes, this container makes
-# itself and keeps in the config folder. A value given on the container
-# would be ignored without a word, so it is refused with one.
+# itself and keeps in hikari.env in the config folder. One of them given
+# on the container as well is not used, and the log says so. The database
+# password is the exception: the database is made with it, so a different
+# one could only lock the programs out, and is refused.
 for made in HIKARI_ADMIN_PASSWORD_HASH HIKARI_SESSION_SECRET HIKARI_ANALYZE_TOKEN; do
-    [ -z "${!made:-}" ] || fail "$made is set on the container; this container makes it on first start and keeps it in hikari.env in the config folder. Remove the variable (to change the value, edit that file)"
+    [ -z "${!made:-}" ] || log "$made is set on the container and is not used: this container makes its own and keeps it in hikari.env in the config folder"
 done
-# The database is made with its password; a new line in the file would
-# not change the database's own copy, only lock the programs out.
-[ -z "${HIKARI_DB_PASSWORD:-}" ] || fail "HIKARI_DB_PASSWORD is set on the container; this container makes it on first start, makes the database with it, and keeps it in hikari.env in the config folder. Remove the variable, and leave that line of the file as it is"
-case "${HIKARI_ADMIN_USER:-}" in
-    *[[:cntrl:]]*) fail "HIKARI_ADMIN_USER has a line break or another control character in it" ;;
-    [[:space:]]*|*[[:space:]]) fail "HIKARI_ADMIN_USER starts or ends with a space; the sign-in would need it typed" ;;
-esac
-
-# This container makes the token of the analyze worker named "analyze" and
-# gives the gallery that pair itself; HIKARI_WORKER_TOKENS, the same
-# setting as on every install, lists the others.
-case ",$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr -d '[:space:]')" in
-    *,analyze:*) fail "HIKARI_WORKER_TOKENS names analyze, the worker whose token this container makes itself; list only your other workers there, as name:token,name:token" ;;
-esac
+if [ -n "${HIKARI_DB_PASSWORD:-}" ] && [ "$(sed -n 's/^HIKARI_DB_PASSWORD=//p' /config/hikari.env 2>/dev/null)" != "$HIKARI_DB_PASSWORD" ]; then
+    fail "HIKARI_DB_PASSWORD on the container is not the one this container made its database with (it keeps that in hikari.env in the config folder). Remove the variable"
+fi
 
 for mount in /config /data /images; do
     mountpoint -q "$mount" || fail "nothing is mounted at $mount; without it everything there is lost when the container is updated"

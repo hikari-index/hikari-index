@@ -79,6 +79,14 @@ if [ "$(cat /config/worker-tokens/analyze 2>/dev/null || true)" != "$token" ]; t
     mv /config/worker-tokens/analyze.new /config/worker-tokens/analyze
 fi
 
+# The analyze worker beside this container reads the token made here, so
+# a different token for the name analyze in HIKARI_WORKER_TOKENS cannot
+# work. The same pair is fine.
+case ",$(printf '%s' "${HIKARI_WORKER_TOKENS:-}" | tr -d '[:space:]')," in
+    *",analyze:$token,"*) ;;
+    *,analyze:*) fail "HIKARI_WORKER_TOKENS gives the name analyze a different token from the one this container made; remove that pair (the container's own is in worker-tokens/analyze in the config folder)" ;;
+esac
+
 if [ -f /config/shoko-api-key ] && [ ! -L /config/shoko-api-key ]; then
     chmod 0400 /config/shoko-api-key
 fi

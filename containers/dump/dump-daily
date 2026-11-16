@@ -1,8 +1,7 @@
 #!/bin/bash
-# One dump of the database a day into a folder, fourteen kept. The same
-# script on every way of installing: compose.yaml's `backup` service runs
-# it from the database image, the all-in-one image runs it beside its own
-# database.
+# One dump of the database a day into a folder, fourteen kept.
+# compose.yaml's `backup` service runs it from the database image; the
+# all-in-one image runs it beside its own database.
 #
 #   dump-daily <folder>
 #
