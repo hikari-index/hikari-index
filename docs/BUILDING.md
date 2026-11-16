@@ -42,12 +42,22 @@ encoder images rather than built again: it starts from the worker image
 and copies in the gallery's built app and Node, and the text encoder's
 Python, packages, model and code. The files are theirs; the operating
 system under the gallery and the text encoder is the worker image's, so
-that they give the same output is something a run has to show, and has
-(the same film through this image and the compose install: the same
-frames, web images, database rows and phrase vectors). It adds PostgreSQL with pgvector at the
-versions the database image holds (next section) and s6-overlay (the
-exact release by sha256) to start and stop the parts in order. One
-command builds the three and then the image:
+that they give the same output is something only a run shows. The last
+one, on 2026-11-15: one film through the compose install, four separate
+containers set up by hand, and this image, built from one commit. All
+three gave the same 35 stills row for row, the same 53 original frames
+and 140 web images by sha256, the same pages and the same answer to a
+new mood phrase; the gallery's 3,481 files, the worker's code and the
+text encoder's code were identical between the separate images and this
+one. The start scripts changed after that run (what a program is
+refused, not what it is given), and the film was put through the final
+image again: the same frames and web images. Run it again when a base
+image moves; a build that succeeds does not show it.
+
+It adds PostgreSQL with pgvector at the versions the database image
+holds (next section) and s6-overlay (the exact release by sha256) to
+start and stop the parts in order. One command builds the three and then
+the image:
 
 ```bash
 VERSION=<version> docker buildx bake -f docker-bake.hcl all-in-one
@@ -104,13 +114,12 @@ and going back to the previous pin and the 1.4.0 gallery worked. The
 distances between stills came out the same at every step. Not checked:
 mood search and an import after going back.
 
-The pin's image against the all-in-one built from it, same day: the same
-server and pgvector versions, JIT available in both, the schema dump
-identical, and of 400 database settings compared, 10 differ: where the
-files are, how the locale is spelled, the listen address (the
-all-in-one's database listens inside its container only) and the socket
-folder. Six distance functions over 300 pairs of vectors gave the same
-results in both.
+The compose install's database against the all-in-one's, in that same
+run: PostgreSQL 18.7 and pgvector 0.8.7 in both, both on UTC. They
+differ where one container must: the all-in-one's database listens
+inside its container only and asks for the password even there, its
+files are in the config folder, and its locale is spelled `en_US.UTF-8`
+where the image's is `en_US.utf8` (the same locale).
 
 The inference base and the CPU worker both download the models from
 Hugging Face at the same pinned revisions and check the sha256 of every
