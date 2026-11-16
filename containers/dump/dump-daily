@@ -25,8 +25,12 @@ log() { echo "[backup] $*"; }
 trap 'exit 0' TERM INT
 
 [ -d "$dir" ] && [ -w "$dir" ] || { log "cannot write to $dir as user $(id -u); no dumps will be made until it is writable"; }
-# A dump that was cut short (a stop, a full disk) is not a dump.
-rm -f "$dir"/*.dump.part 2>/dev/null
+# A dump that was cut short (a stop, a full disk) is not a dump. Each
+# run writes under a name of its own, so a second one started on the same
+# folder by mistake can remove this one's unfinished file (its dump then
+# fails and says so) but never publish it as finished.
+rm -f "$dir"/*.dump.part* 2>/dev/null
+mine="part.$(hostname).$$"
 
 while true; do
     dump="$dir/hikari-$(date -u +%F).dump"
@@ -36,11 +40,14 @@ while true; do
         elif ! [ "$tables" -ge 0 ] 2>/dev/null; then
             log "today's database dump: could not tell whether the database has tables yet (it said: $(printf '%s' "$tables" | tail -n 1)); trying again in an hour"
         elif [ "$tables" -gt 0 ]; then
-            if pg_dump --format=custom --file="$dump.part" && mv "$dump.part" "$dump"; then
-                ls -1t "$dir"/hikari-*.dump | tail -n +15 | xargs -r rm --
+            if pg_dump --format=custom --file="$dump.$mine" && mv "$dump.$mine" "$dump"; then
+                # Fourteen kept: by the date in the name, daily dumps only,
+                # and safe for a folder or file name with a space in it.
+                find "$dir" -maxdepth 1 -type f -name 'hikari-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].dump' -print0 \
+                    | sort -z -r | tail -z -n +15 | xargs -0 -r rm --
                 log "database dumped to $dump"
             else
-                rm -f "$dump.part"
+                rm -f "$dump.$mine"
                 log "today's database dump failed (is the folder's disk full, and can user $(id -u) write to $dir?); trying again in an hour"
             fi
         fi
