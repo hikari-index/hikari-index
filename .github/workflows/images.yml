@@ -2,8 +2,13 @@ name: Images
 
 # Builds the published images (docs/RELEASING.md).
 #   pull request   build only, nothing pushed: proves the images still build
-#   merge to main  push `dev` and `sha-<short commit>`
+#   merge to main  push `dev` and `sha-<short commit>`; skipped when the
+#                  merge touches nothing an image is built from (the
+#                  paths-ignore list below), so `dev` does not move, and
+#                  nobody running it is offered an update, for a docs fix
 #   tag vX.Y.Z     push `X.Y.Z` and `latest`, then open a draft release
+#                  (a tag always builds: GitHub applies no path filter to
+#                  tags)
 # The GPU analyze worker is not built here: its CUDA base (about 18 GB)
 # does not fit on a standard runner. The gallery (both builds) and the
 # text encoder are also built for linux/arm64; the two workers are
@@ -14,6 +19,14 @@ on:
   push:
     branches: [main]
     tags: ["v[0-9]+.[0-9]+.[0-9]+"]
+    # Only when every changed file is one of these. No Dockerfile copies
+    # any of them. `*.md` is the markdown at the repository root; a
+    # README inside providers/ is copied into an image and still builds.
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "templates/**"
+      - "ca_profile.xml"
   workflow_dispatch:
 
 permissions:
