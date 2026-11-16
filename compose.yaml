@@ -67,7 +67,7 @@ services:
     # /var/lib/postgresql. This line is the database version: whatever
     # else in this repository runs a database names this same image at
     # this same digest (docs/BUILDING.md, "The database version").
-    image: pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
+    image: &database-image pgvector/pgvector:pg18@sha256:38681dc6eaf55308e2a4c6de392d131652dcfac70e1263e35cd9b5ea3fe39782
     restart: unless-stopped
     environment:
       POSTGRES_DB: hikari
@@ -82,6 +82,38 @@ services:
       interval: 10s
       timeout: 3s
       retries: 20
+
+  # One dump of the database a day, fourteen kept, by the script every way
+  # of installing uses (containers/dump/dump-daily, read from this
+  # checkout). It runs from the database's own image, so its pg_dump is
+  # the server's version. On the same disk as the database it guards
+  # against a bad update or a mistake, not a dead disk
+  # (https://docs.hikari-index.moe/run/backups/).
+  backup:
+    image: *database-image
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # It runs as root, the user the database image starts as, with one
+    # capability: the one that lets it write into a folder of yours that
+    # root does not own. The dumps are root's, mode 0600.
+    read_only: true
+    cap_drop:
+      - ALL
+    cap_add:
+      - DAC_OVERRIDE
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PGHOST: db
+      PGUSER: hikari
+      PGDATABASE: hikari
+      PGPASSWORD: ${HIKARI_DB_PASSWORD:-}
+    entrypoint: ["bash", "/usr/local/bin/dump-daily", "/backups"]
+    volumes:
+      - ./containers/dump/dump-daily:/usr/local/bin/dump-daily:ro
+      - ${HIKARI_BACKUPS:-hikari-backups}:/backups
 
   gallery:
     <<: *hardening
@@ -216,6 +248,8 @@ services:
 
 volumes:
   hikari-db:
+  # The daily database dumps.
+  hikari-backups:
   # Run records, the original frames (masters) and the frames the picker
   # did not take. The largest of the three.
   hikari-data:
