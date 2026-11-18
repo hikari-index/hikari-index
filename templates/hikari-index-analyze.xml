@@ -11,7 +11,7 @@
   <ReadMe>https://docs.hikari-index.moe/</ReadMe>
   <Overview>The analyze worker for Hikari Index, on CPU: it describes each frame (tags, faces, shot size, camera angle, similarity) and picks the stills. Install "hikari-index" first and start it once; this container then finds its token in that container's Config folder, so there is nothing to paste.&#xD;
 &#xD;
-It is the heavy part: a large image (about 3.5 GB to download) and, while it works, about 1 GB of memory and every CPU core you leave it, for roughly eight minutes an episode on four cores. Pin it to a few cores if the server has other work. It waits quietly when there is nothing to do.</Overview>
+It is the heavy part: a large image (about 3.5 GB to download) and, while it works, about 1 GB of memory and every CPU core you leave it, for roughly ten to fifteen minutes an episode on four cores. Pin it to a few cores if the server has other work. It waits quietly when there is nothing to do.</Overview>
   <Category>MediaApp:Photos Tools:</Category>
   <TemplateURL>https://raw.githubusercontent.com/hikari-index/hikari-index/main/templates/hikari-index-analyze.xml</TemplateURL>
   <Icon>https://raw.githubusercontent.com/hikari-index/hikari-index/main/gallery/static/icon.png</Icon>
