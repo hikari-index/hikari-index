@@ -76,9 +76,12 @@ build on GitHub's runners); build it yourself, see
 | `1.5.1` (the version) | never | a release |
 | `dev` | yes | a merge to `main`, except one that touches only docs and templates (below) |
 | `sha-<short commit>` | never | the same merges |
+| `build-<run id>` | not yours to pull | a release run, before it moves `latest` and the version (below) |
 
 A version tag and a `sha-` tag are never moved, overwritten or deleted
-once pushed. `latest` and `dev` are meant to move.
+once pushed. `latest` and `dev` are meant to move. A `build-` tag is the
+release workflow's own working name for an image; the version tag ends
+up on the same image.
 
 A merge that touches only `docs/`, the markdown at the repository root
 or the unRAID templates builds nothing: `dev` stays where it was and no
@@ -99,12 +102,37 @@ always builds.
    git push origin v1.6.0
    ```
 
-3. The images workflow builds every image from that commit, pushes the
-   version and `latest`, and opens a draft release with the merged pull
-   requests listed (`.github/release.yml` puts `action-needed` ones in
-   their own section).
+3. The images workflow builds every image from that commit. Only when
+   all of them exist does it point the version and `latest` at them, so
+   a build that fails publishes nothing. Then it opens a draft release
+   with the merged pull requests listed (`.github/release.yml` puts
+   `action-needed` ones in their own section).
 4. Edit the draft: the first line is **Action needed:** with what to do,
    or "None". Then two or three plain lines on what changed. Publish.
 
 The Releases page lists releases only; every build is on the packages'
 tag lists.
+
+### When a release run fails
+
+- **A build failed.** No image's version or `latest` has moved. On the
+  run's page choose **Re-run failed jobs**.
+- **The last job, `publish`, stopped part-way.** Some images have the
+  new tags and some do not. **Re-run failed jobs** finishes it with the
+  images that run already built.
+- **Re-run all jobs builds everything again**, replacing the images the
+  run built before. That is fine while nothing of the version is out.
+  Once any image has the version tag, the run stops at `publish` and
+  says so: a version tag is never pointed at a second build. That
+  version cannot be finished then; release the next patch. So after a
+  `publish` that stopped part-way, use **Re-run failed jobs**, not this.
+
+`latest` moves only when the version being released is the newest
+version tag in the repository. Releasing `1.5.2` after `1.6.0` is out
+publishes `1.5.2` and leaves `latest` on `1.6.0`. A newer tag counts
+even if its own release failed: finish that release and `latest` moves
+to it.
+
+Push one release tag at a time. Release runs wait for each other, and
+GitHub keeps only one waiting: a third cancels the second, which then
+has to be run again.

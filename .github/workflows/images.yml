@@ -6,9 +6,11 @@ name: Images
 #                  merge touches nothing an image is built from (the
 #                  paths-ignore list below), so `dev` does not move, and
 #                  nobody running it is offered an update, for a docs fix
-#   tag vX.Y.Z     push `X.Y.Z` and `latest`, then open a draft release
-#                  (a tag always builds: GitHub applies no path filter to
-#                  tags)
+#   tag vX.Y.Z     build every image under a tag of this run's own
+#                  (`build-<run id>`), and only when all of them exist
+#                  point `X.Y.Z` and `latest` at them, then open a draft
+#                  release (a tag always builds: GitHub applies no path
+#                  filter to tags)
 # The GPU analyze worker is not built here: its CUDA base (about 18 GB)
 # does not fit on a standard runner. The gallery (both builds) and the
 # text encoder are also built for linux/arm64; the two workers are
@@ -33,8 +35,10 @@ permissions:
   contents: read
   packages: write
 
+# One run at a time per branch or pull request. Releases share one group
+# whatever their tags, so two of them never move `latest` at once.
 concurrency:
-  group: images-${{ github.ref }}
+  group: ${{ startsWith(github.ref, 'refs/tags/v') && 'images-release' || format('images-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
@@ -113,8 +117,7 @@ jobs:
           tags: |
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=build-${{ github.run_id }},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           labels: |
             org.opencontainers.image.title=hikari-index ${{ matrix.image }}
             org.opencontainers.image.licenses=AGPL-3.0-or-later
@@ -174,8 +177,7 @@ jobs:
           tags: |
             type=raw,value=dev,enable=${{ github.ref == 'refs/heads/main' }}
             type=sha,prefix=sha-,format=short,enable=${{ github.ref == 'refs/heads/main' }}
-            type=semver,pattern={{version}}
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/v') }}
+            type=raw,value=build-${{ github.run_id }},enable=${{ startsWith(github.ref, 'refs/tags/v') }}
           labels: |
             org.opencontainers.image.title=hikari-index all-in-one
             org.opencontainers.image.licenses=AGPL-3.0-or-later
@@ -184,15 +186,15 @@ jobs:
       # A published all-in-one must hold exactly the files of the images
       # published beside it, so on main and on a release it is put
       # together from the images the job above just pushed (by their
-      # commit or version tag, which never move), never from a second
-      # build of them. A pull request pushes nothing, so there the three
-      # are built again from the checkout, which only proves the image
-      # still builds.
+      # commit tag, which never moves, or this run's own tag), never from
+      # a second build of them. A pull request pushes nothing, so there
+      # the three are built again from the checkout, which only proves
+      # the image still builds.
       - name: Parts
         id: parts
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            tag="${GITHUB_REF#refs/tags/v}"
+            tag="build-${GITHUB_RUN_ID}"
           elif [[ "$GITHUB_EVENT_NAME" != pull_request && "$GITHUB_REF" == refs/heads/main ]]; then
             tag="sha-${GITHUB_SHA::7}"
           else
@@ -224,8 +226,100 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           set: ${{ steps.parts.outputs.set }}
 
-  release:
+  # A release's last step, and the only one that moves a tag anyone pulls
+  # by. Every image of this run exists by now under `build-<run id>`;
+  # this points `X.Y.Z`, then `latest`, at those same images (a registry
+  # copy of the tag, no rebuild). So a build that fails leaves `X.Y.Z` and
+  # `latest` where they were for every image.
+  #
+  # A version tag is never overwritten. One that already points at this
+  # run's image is left alone, so "Re-run failed jobs" finishes a release
+  # this job was interrupted in. One that points at any other build stops
+  # the job before it moves anything: that version is out, and a second
+  # build of it would not be the same image. `latest` moves only when
+  # this is the newest version tag in the repository, so re-running an
+  # old release cannot take it backward.
+  #
+  # The tag copies are separate writes to the registry, not one: if this
+  # job dies between two of them, some images have the new tags and some
+  # do not until it is run again. Version tags all go first, so the
+  # stretch in which `latest` can be mixed is the last six copies.
+  publish:
     needs: [build, all-in-one]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Point the version and latest at this run's images
+        env:
+          REGISTRY: ghcr.io/hikari-index
+          IMAGES: gallery gallery-readonly worker cpu-worker text-encoder hikari-index
+          REPOSITORY_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          staged="build-${GITHUB_RUN_ID}"
+
+          # The digest a tag points at; nothing when there is no such tag.
+          # Any other failure stops the job: a tag that could not be read
+          # must never be taken for a tag that is not there.
+          digest() {
+            local out
+            if out="$(docker buildx imagetools inspect "$1" --format '{{.Manifest.Digest}}' 2>&1)"; then
+              printf '%s' "$out"
+            elif ! printf '%s\n' "$out" | grep -q ': not found$'; then
+              echo "::error::could not read $1: $out" >&2
+              return 1
+            fi
+          }
+
+          # 1. Every image of this run, before anything moves.
+          declare -A built
+          for image in $IMAGES; do
+            built[$image]="$(digest "$REGISTRY/$image:$staged")"
+            [ -n "${built[$image]}" ] || { echo "::error::$image:$staged is missing; nothing was published"; exit 1; }
+          done
+
+          # 2. No version tag from another build, before anything moves.
+          todo=""; taken=""
+          for image in $IMAGES; do
+            now="$(digest "$REGISTRY/$image:$version")"
+            if [ -z "$now" ]; then todo="$todo $image"
+            elif [ "$now" != "${built[$image]}" ]; then taken="$taken $image"
+            fi
+          done
+          if [ -n "$taken" ]; then
+            echo "::error::$version is already published from another build for:$taken. A version tag is never overwritten, so nothing was moved. See \"When a release run fails\" in docs/RELEASING.md."
+            exit 1
+          fi
+
+          # 3. The newest version tag in the repository, before anything
+          # moves: failing to read it must not leave the job half done.
+          newest="$(git ls-remote --tags --refs "$REPOSITORY_URL" 'refs/tags/v*' | sed -n 's|.*refs/tags/v\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\)$|\1|p' | sort -V | tail -n 1)"
+
+          # 4. The version.
+          for image in $todo; do
+            docker buildx imagetools create --tag "$REGISTRY/$image:$version" "$REGISTRY/$image@${built[$image]}"
+          done
+
+          # 5. latest, when no newer version has been tagged.
+          if [ "$newest" != "$version" ]; then
+            echo "::notice::latest stays where it is: $newest is tagged and is newer than $version"
+            exit 0
+          fi
+          for image in $IMAGES; do
+            docker buildx imagetools create --tag "$REGISTRY/$image:latest" "$REGISTRY/$image@${built[$image]}"
+          done
+
+  release:
+    needs: publish
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
