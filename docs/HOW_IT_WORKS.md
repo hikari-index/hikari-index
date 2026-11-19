@@ -21,8 +21,8 @@ written to.
 - **The analyze worker.** It runs the models: tags for what is in a
   frame, faces for how it is framed, an image embedding for likeness and
   mood search, a palette for each frame, and the picker that chooses the
-  final set. It needs a GPU to be quick and a CPU to be possible. It
-  never sees your source files, only the frames the first stage prepared.
+  final set. It runs on a GPU or on a CPU. It never sees your source
+  files, only the frames the first stage prepared.
 - **The text encoder.** A small service that turns a typed phrase into
   the same kind of vector the frames carry, so "rainy neon street at
   night" finds frames. Optional; without it, tag search still works.

@@ -19,7 +19,7 @@
 #   docker compose build analyze-gpu
 #
 # The analyze worker comes in two kinds, chosen by COMPOSE_PROFILES in
-# `.env`: `cpu` (works anywhere, slow) or `gpu` (an NVIDIA card).
+# `.env`: `cpu` (works anywhere) or `gpu` (an NVIDIA card).
 #
 # Setup, Shoko, backups, recovery, updating and an analyze worker on
 # another machine are in the docs: https://docs.hikari-index.moe/
