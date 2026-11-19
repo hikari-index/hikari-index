@@ -22,8 +22,8 @@ and the rules it keeps, for anyone changing the code),
 - A machine that has the video and can run containers (Docker with
   Compose, amd64): it runs the gallery, its PostgreSQL database and the
   worker that reads the files.
-- Somewhere to run the models: a machine with an NVIDIA GPU is quick, a
-  CPU-only machine works and is slow. It needs no access to your video.
+- Somewhere to run the models: a machine with an NVIDIA GPU, or any
+  CPU. It needs no access to your video.
 - [Shoko](https://shokoanime.com/) is optional and recommended: the
   gallery reads your series, episodes and files from it (read-only, a
   non-admin key). Without it you add files by path or a folder at a time.
