@@ -104,7 +104,8 @@ always builds.
 
 3. The images workflow builds every image from that commit. Only when
    all of them exist does it point the version and `latest` at them, so
-   a build that fails publishes nothing. Then it opens a draft release
+   a build that fails moves neither for any image. Then it opens a draft
+   release
    with the merged pull requests listed (`.github/release.yml` puts
    `action-needed` ones in their own section).
 4. Edit the draft: the first line is **Action needed:** with what to do,
@@ -117,7 +118,7 @@ tag lists.
 
 - **A build failed.** No image's version or `latest` has moved. On the
   run's page choose **Re-run failed jobs**.
-- **The last job, `publish`, stopped part-way.** Some images have the
+- **The `publish` job stopped part-way.** Some images have the
   new tags and some do not. **Re-run failed jobs** finishes it with the
   images that run already built.
 - **Re-run all jobs builds everything again**, replacing the images the
